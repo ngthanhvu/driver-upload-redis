@@ -50,11 +50,10 @@ services:
       MONGO_URI: mongodb://mongo:27017/driveapp
       CORS_ORIGIN: http://localhost
       NODE_OPTIONS: "--max-old-space-size=96"
-    depends_on:
-      redis:
-        condition: service_healthy
-      mongo:
-        condition: service_started
+      depends_on:
+        - redis
+        - mongo
+
     mem_limit: 128M
     mem_reservation: 64M
     cpus: "0.50"
