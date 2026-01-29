@@ -11,6 +11,7 @@ type DocumentItem = {
   downloadUrl: string
 }
 
+
 const API_BASE = (import.meta.env.VITE_API_BASE || '').trim()
 
 const docs = ref<DocumentItem[]>([])
@@ -205,19 +206,10 @@ onBeforeUnmount(() => {
               </div>
             </div>
             <div class="file-actions">
-              <span
-                class="chip"
-                :class="{ warn: doc.isExpiringSoon }"
-                :title="`Het han sau ${doc.remainingSeconds}s`"
-              >
+              <span class="chip" :class="{ warn: doc.isExpiringSoon }" :title="`Het han sau ${doc.remainingSeconds}s`">
                 {{ formatRemaining(doc.remainingSeconds) }}
               </span>
-              <a
-                class="button secondary"
-                :href="joinUrl(API_BASE, doc.downloadUrl)"
-                target="_blank"
-                rel="noreferrer"
-              >
+              <a class="button secondary" :href="joinUrl(API_BASE, doc.downloadUrl)" target="_blank" rel="noreferrer">
                 Tai xuong
               </a>
             </div>
