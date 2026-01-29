@@ -17,7 +17,10 @@ const joinUrl = (base: string, path: string) => base.replace(/\/$/, '') + path
 
 const fileLabel = computed(() => {
   if (selectedFiles.value.length === 0) return 'Chon file hinh anh'
-  if (selectedFiles.value.length === 1) return selectedFiles.value[0].name
+  if (selectedFiles.value.length === 1) {
+    const firstFile = selectedFiles.value[0]
+    return firstFile ? firstFile.name : 'Chon file hinh anh'
+  }
   return `Da chon ${selectedFiles.value.length} files`
 })
 
