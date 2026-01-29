@@ -4,12 +4,14 @@ services:
   redis:
     image: redis:7-alpine
     restart: unless-stopped
+    container_name: drive-redis-prod
     volumes:
       - redis-data:/data
 
   mongo:
     image: mongo:7
     restart: unless-stopped
+    container_name: drive-mongo-prod
     volumes:
       - mongo-data:/data/db
 
@@ -18,7 +20,7 @@ services:
       context: ./backend
       dockerfile: Dockerfile.prod
     restart: unless-stopped
-    container_name: driver-backend
+    container_name: driver-backend-prod
     environment:
       PORT: 5000
       REDIS_URL: redis://redis:6379
@@ -33,7 +35,7 @@ services:
       context: ./frontend
       dockerfile: Dockerfile.prod
     restart: unless-stopped
-    container_name: driver-frontend
+    container_name: driver-frontend-prod
     ports:
       - "8081:80"
     depends_on:
