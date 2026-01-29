@@ -1,19 +1,33 @@
 version: "3.9"
 
+x-logging: &default-logging
+  driver: "json-file"
+  options:
+    max-size: "10m"
+    max-file: "3"
+
 services:
   redis:
     image: redis:7-alpine
     restart: unless-stopped
     container_name: drive-redis-prod
+    logging: *default-logging
     volumes:
       - redis-data:/data
+    mem_limit: 256M
+    mem_reservation: 128M
+    cpus: "0.25"
 
   mongo:
     image: mongo:7
     restart: unless-stopped
     container_name: drive-mongo-prod
+    logging: *default-logging
     volumes:
       - mongo-data:/data/db
+    mem_limit: 768M
+    mem_reservation: 384M
+    cpus: "0.50"
 
   backend:
     build:
@@ -21,6 +35,7 @@ services:
       dockerfile: Dockerfile.prod
     restart: unless-stopped
     container_name: driver-backend-prod
+    logging: *default-logging
     environment:
       PORT: 5000
       REDIS_URL: redis://redis:6379
@@ -29,6 +44,9 @@ services:
     depends_on:
       - redis
       - mongo
+    mem_limit: 512M
+    mem_reservation: 256M
+    cpus: "0.50"
 
   frontend:
     build:
@@ -36,10 +54,14 @@ services:
       dockerfile: Dockerfile.prod
     restart: unless-stopped
     container_name: driver-frontend-prod
+    logging: *default-logging
     ports:
       - "8081:80"
     depends_on:
       - backend
+    mem_limit: 256M
+    mem_reservation: 128M
+    cpus: "0.25"
 
 volumes:
   redis-data:
