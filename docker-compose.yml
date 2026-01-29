@@ -3,7 +3,7 @@ version: "3.9"
 services:
   redis:
     image: redis:7-alpine
-    container_name: driver-redis
+    container_name: drive-redis
     ports:
       - "6379:6379"
     volumes:
@@ -11,7 +11,7 @@ services:
 
   mongo:
     image: mongo:7
-    container_name: driver-mongo
+    container_name: drive-mongo
     ports:
       - "27017:27017"
     volumes:
@@ -20,7 +20,7 @@ services:
   backend:
     build:
       context: ./backend
-    container_name: driver-backend
+    container_name: drive-backend
     ports:
       - "5000:5000"
     environment:
@@ -39,7 +39,7 @@ services:
   frontend:
     build:
       context: ./frontend
-    container_name: driver-frontend
+    container_name: drive-frontend
     ports:
       - "5173:5173"
     environment:
