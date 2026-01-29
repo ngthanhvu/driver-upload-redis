@@ -9,59 +9,82 @@ x-logging: &default-logging
 services:
   redis:
     image: redis:7-alpine
-    restart: unless-stopped
     container_name: drive-redis-prod
+    restart: unless-stopped
     logging: *default-logging
     volumes:
       - redis-data:/data
+    command: >
+      redis-server --maxmemory 96mb --maxmemory-policy allkeys-lru --appendonly no
     mem_limit: 128M
     mem_reservation: 64M
-    cpus: "0.25"
+    cpus: "0.20"
+    healthcheck:
+      test: [ "CMD", "redis-cli", "ping" ]
+      interval: 10s
+      timeout: 3s
+      retries: 5
 
   mongo:
     image: mongo:7
-    restart: unless-stopped
     container_name: drive-mongo-prod
+    restart: unless-stopped
     logging: *default-logging
     volumes:
       - mongo-data:/data/db
-    mem_limit: 128M
-    mem_reservation: 64M
+    command: >
+      mongod --wiredTigerCacheSizeGB 0.05 --bind_ip_all
+    mem_limit: 256M
+    mem_reservation: 128M
     cpus: "0.50"
+    healthcheck:
+      test: [ "CMD", "mongosh", "--eval", "db.runCommand('ping').ok" ]
+      interval: 15s
+      timeout: 5s
+      retries: 5
 
   backend:
     build:
       context: ./backend
       dockerfile: Dockerfile.prod
-    restart: unless-stopped
     container_name: driver-backend-prod
+    restart: unless-stopped
     logging: *default-logging
     environment:
       PORT: 5000
       REDIS_URL: redis://redis:6379
       MONGO_URI: mongodb://mongo:27017/driveapp
       CORS_ORIGIN: http://localhost
+      NODE_OPTIONS: "--max-old-space-size=96"
     depends_on:
-      - redis
-      - mongo
+      redis:
+        condition: service_healthy
+      mongo:
+        condition: service_healthy
     mem_limit: 128M
     mem_reservation: 64M
     cpus: "0.50"
+    healthcheck:
+      test: [ "CMD", "wget", "-qO-", "http://localhost:5000/health" ]
+      interval: 15s
+      timeout: 5s
+      retries: 5
 
   frontend:
     build:
       context: ./frontend
       dockerfile: Dockerfile.prod
-    restart: unless-stopped
     container_name: driver-frontend-prod
+    restart: unless-stopped
     logging: *default-logging
     ports:
       - "8081:80"
     depends_on:
-      - backend
-    mem_limit: 64M
-    mem_reservation: 32M
-    cpus: "0.25"
+      backend:
+        condition: service_healthy
+    mem_limit: 32M
+    mem_reservation: 16M
+    cpus: "0.10"
 
 volumes:
   redis-data:

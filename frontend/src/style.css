@@ -52,7 +52,7 @@ a {
   width: min(1100px, 100%);
   display: flex;
   flex-direction: column;
-  gap: clamp(28px, 4vw, 48px);
+  /* gap: clamp(28px, 4vw, 48px); */
 }
 
 .hero {
@@ -61,6 +61,7 @@ a {
   align-items: center;
   justify-content: space-between;
   gap: 24px;
+  margin-bottom: 10px;
 }
 
 .eyebrow {
@@ -90,47 +91,6 @@ h2 {
   max-width: 520px;
 }
 
-.pulse-card {
-  position: relative;
-  display: grid;
-  place-items: center;
-  width: 140px;
-  height: 140px;
-  border-radius: 50%;
-  background: radial-gradient(circle, #fff 0%, #f8f4ed 70%);
-  box-shadow: var(--shadow);
-  border: 1px solid rgba(15, 124, 117, 0.15);
-}
-
-.pulse-ring {
-  position: absolute;
-  width: 140px;
-  height: 140px;
-  border-radius: 50%;
-  border: 2px solid rgba(15, 124, 117, 0.3);
-  animation: pulse 2.6s ease-in-out infinite;
-}
-
-.pulse-text {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 6px;
-  font-weight: 600;
-}
-
-.pulse-text span {
-  font-size: 0.75rem;
-  letter-spacing: 0.16em;
-  text-transform: uppercase;
-  color: var(--muted);
-}
-
-.pulse-text strong {
-  font-size: 1.4rem;
-  color: var(--accent-strong);
-}
-
 .grid {
   display: grid;
   gap: var(--gap);
@@ -157,6 +117,15 @@ h2 {
   gap: 16px;
   align-items: center;
   margin-top: 18px;
+  padding: 14px;
+  border-radius: 16px;
+  border: 1px dashed rgba(15, 124, 117, 0.2);
+  background: rgba(255, 255, 255, 0.6);
+}
+
+.uploader.dragging {
+  border-color: rgba(15, 124, 117, 0.6);
+  background: rgba(15, 124, 117, 0.08);
 }
 
 .file-input {
@@ -176,9 +145,48 @@ h2 {
   display: none;
 }
 
+.drop-hint {
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
 .status {
   margin-top: 14px;
   min-height: 22px;
+}
+
+.upload-card .button.primary {
+  margin-top: 16px;
+}
+
+.preview-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+  gap: 12px;
+  margin-top: 16px;
+}
+
+.preview-card {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px;
+  border-radius: 12px;
+  border: 1px solid rgba(15, 124, 117, 0.18);
+  background: rgba(255, 255, 255, 0.85);
+}
+
+.preview-card img {
+  width: 100%;
+  height: 90px;
+  object-fit: cover;
+  border-radius: 8px;
+}
+
+.preview-name {
+  font-size: 0.8rem;
+  color: var(--muted);
+  word-break: break-word;
 }
 
 .status .muted {
@@ -254,6 +262,78 @@ h2 {
   flex-shrink: 0;
 }
 
+.skeleton-item {
+  background: rgba(255, 255, 255, 0.65);
+  border-style: dashed;
+}
+
+.skeleton {
+  display: inline-block;
+  border-radius: 999px;
+  background: linear-gradient(90deg, rgba(15, 124, 117, 0.08) 0%, rgba(15, 124, 117, 0.2) 50%, rgba(15, 124, 117, 0.08) 100%);
+  background-size: 200% 100%;
+  animation: shimmer 1.2s ease-in-out infinite;
+}
+
+.skeleton-title {
+  width: 180px;
+  height: 16px;
+  margin-bottom: 8px;
+}
+
+.skeleton-chip {
+  width: 68px;
+  height: 18px;
+}
+
+.skeleton-button {
+  width: 90px;
+  height: 32px;
+  border-radius: 999px;
+}
+
+.preview-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 27, 22, 0.55);
+  display: grid;
+  place-items: center;
+  padding: 20px;
+  z-index: 50;
+}
+
+.preview-modal {
+  width: min(720px, 100%);
+  background: var(--card-strong);
+  border-radius: 18px;
+  box-shadow: var(--shadow);
+  border: 1px solid var(--border);
+  padding: 18px;
+  display: grid;
+  gap: 12px;
+}
+
+.preview-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.preview-title {
+  font-weight: 600;
+  color: var(--ink);
+  word-break: break-word;
+}
+
+.preview-image {
+  width: 100%;
+  max-height: 70vh;
+  object-fit: contain;
+  border-radius: 12px;
+  background: rgba(15, 124, 117, 0.06);
+}
+
 .button {
   border: none;
   border-radius: 999px;
@@ -320,18 +400,25 @@ h2 {
   font-weight: 600;
 }
 
-@keyframes pulse {
+.pagination {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+}
+
+.page-status {
+  color: var(--muted);
+  font-weight: 600;
+}
+
+@keyframes shimmer {
   0% {
-    transform: scale(0.94);
-    opacity: 0.6;
+    background-position: 100% 0;
   }
-  70% {
-    transform: scale(1.08);
-    opacity: 0;
-  }
+
   100% {
-    transform: scale(1.08);
-    opacity: 0;
+    background-position: -100% 0;
   }
 }
 
