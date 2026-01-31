@@ -114,3 +114,53 @@ export const downloadDocument = async (req: Request, res: Response) => {
 
     return res.status(200).send(buffer);
 };
+
+export const extendDocument = async (req: Request, res: Response) => {
+    const { id } = req.params;
+    const rawMinutes = Number(req.body?.minutes);
+
+    if (!Number.isFinite(rawMinutes) || rawMinutes <= 0) {
+        return res.status(400).json({ message: "Minutes must be a positive number." });
+    }
+
+    if (rawMinutes > 12 * 60) {
+        return res
+            .status(400)
+            .json({ message: "Maximum extension is 720 minutes." });
+    }
+    const minutes = rawMinutes;
+    const metaRaw = await redisClient.get(`docmeta:${id}`);
+
+    if (!metaRaw) {
+        return res.status(404).json({ message: "File not found or expired." });
+    }
+
+    const meta = JSON.parse(metaRaw) as {
+        id: string;
+        originalName: string;
+        contentType: string;
+        size: number;
+        expiresAt: number;
+    };
+
+    const now = Date.now();
+    const newExpiresAt = now + minutes * 60 * 1000;
+    const ttlSeconds = Math.max(1, Math.ceil((newExpiresAt - now) / 1000));
+
+    const updatedMeta = {
+        ...meta,
+        expiresAt: newExpiresAt
+    };
+
+    await redisClient
+        .multi()
+        .set(`docmeta:${id}`, JSON.stringify(updatedMeta), { EX: ttlSeconds })
+        .expire(`doc:${id}`, ttlSeconds)
+        .exec();
+
+    return res.status(200).json({
+        id,
+        expiresAt: newExpiresAt,
+        expiresInSeconds: ttlSeconds
+    });
+};

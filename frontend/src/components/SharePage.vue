@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
+import { CloudDownload, Share2 } from 'lucide-vue-next'
 
 const props = defineProps<{
   apiBase: string
@@ -103,36 +104,52 @@ onMounted(async () => {
 </script>
 
 <template>
-  <section class="card share-page">
-    <div class="card-title">
-      <h2>Chia se tai lieu</h2>
-      <p>Link rut gon khong lo endpoint, file se het han sau 1 gio.</p>
+  <section
+    class="w-full max-w-5xl rounded-2xl border border-[#e2d8ca] bg-white/90 p-5 shadow-[0_18px_45px_rgba(35,30,25,0.12)] backdrop-blur sm:p-7">
+    <div class="mb-4">
+      <h2 class="mb-1 font-['Space\\ Grotesk'] text-xl">Chia se tai lieu</h2>
+      <p class="text-sm text-[#6f655b]">Link rut gon, file se het han sau 1 gio.</p>
     </div>
 
-    <div v-if="loading" class="placeholder">Dang tai thong tin...</div>
-    <div v-else-if="error" class="placeholder empty">{{ error }}</div>
-    <div v-else class="share-body">
-      <div class="share-preview">
-        <img v-if="isImage" class="preview-image" :src="downloadUrl" :alt="fileName" />
-        <div v-else class="preview-icon large">
+    <div v-if="loading"
+      class="rounded-xl border border-dashed border-[#b3a79a] bg-white/70 px-6 py-8 text-center text-sm text-[#6f655b]">
+      Dang tai thong tin...
+    </div>
+    <div v-else-if="error"
+      class="rounded-xl border border-dashed border-[#b3a79a] bg-white/70 px-6 py-8 text-center text-sm font-semibold text-[#6f655b]">
+      {{ error }}
+    </div>
+    <div v-else class="grid gap-5 md:grid-cols-[minmax(0,1.2fr)_minmax(0,0.8fr)]">
+      <div>
+        <img v-if="isImage" class="max-h-[50vh] w-full rounded-xl bg-teal-50 object-contain" :src="downloadUrl"
+          :alt="fileName" />
+        <div v-else
+          class="grid h-56 place-items-center rounded-xl bg-teal-50 text-xl font-bold tracking-[0.2em] text-teal-800">
           {{ (fileName || 'FILE').split('.').pop()?.slice(0, 4).toUpperCase() }}
         </div>
       </div>
-      <div class="share-info">
-        <div class="file-name">{{ fileName || `document-${id}` }}</div>
-        <div class="file-meta">
+      <div class="grid content-start gap-3">
+        <div class="text-base font-semibold truncate" :title="fileName || `document-${id}`">
+          {{ fileName || `document-${id}` }}
+        </div>
+        <div class="flex items-center gap-2 text-sm text-[#6f655b]">
           <span>{{ formatBytes(size) }}</span>
           <span>•</span>
-          <span>{{ contentType || 'unknown' }}</span>
+          <span class="break-all">{{ contentType || 'unknown' }}</span>
         </div>
-        <div class="share-actions">
-          <button class="button primary" style="width: 100%;" type="button" @click="downloadFile">Tai xuong</button>
-        </div>
-        <div class="share-status">{{ status }}</div>
-        <div class="share-actions">
-          <button class="button ghost" style="width: 100%;" type="button" @click="shareFile">Chia se</button>
-        </div>
-        <div class="share-status">{{ shareStatus }}</div>
+        <button class="flex w-full items-center justify-center gap-2 rounded-full
+          bg-linear-to-r from-teal-700 to-orange-400
+          px-4 py-3 text-xs font-semibold text-white shadow" type="button" @click="downloadFile">
+          <CloudDownload class="h-4 w-4" />
+          <span>Tai xuong</span>
+        </button>
+        <div class="text-sm text-[#6f655b]">{{ status }}</div>
+        <button
+          class="flex w-full items-center justify-center gap-2 rounded-full border border-[#b3a79a] px-3 py-3 text-xs text-[#6f655b]"
+          type="button" @click="shareFile">
+          <Share2 class="h-4 w-4" /> Chia se
+        </button>
+        <div class="text-sm text-[#6f655b]">{{ shareStatus }}</div>
       </div>
     </div>
   </section>

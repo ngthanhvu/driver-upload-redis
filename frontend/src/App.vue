@@ -57,28 +57,33 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <div class="page">
-    <SharePage v-if="shareId" :api-base="API_BASE" :id="shareId" />
-    <header class="hero" v-if="!shareId">
-      <div>
-        <p class="eyebrow">Redis document vault</p>
-        <h1>Quan ly tai lieu tam thoi</h1>
-        <p class="subtitle">
-          Upload moi loai file duoi 20MB, luu trong Redis 1 gio, tai xuong bat cu luc nao khi con han.
-        </p>
-      </div>
-    </header>
+  <div
+    class="min-h-screen w-full bg-[radial-gradient(circle_at_top_left,#fff8ed_0%,transparent_55%),radial-gradient(circle_at_15%_65%,#def4ef_0%,transparent_50%),linear-gradient(120deg,#f6efe5_0%,#e7f5f2_100%)] text-[#1f1b16] font-['IBM\\ Plex\\ Sans']">
+    <div class="mx-auto flex min-h-screen w-full max-w-6xl flex-col px-4 py-6 sm:px-8 sm:py-10"
+      :class="shareId ? 'justify-center' : ''">
+      <SharePage v-if="shareId" :api-base="API_BASE" :id="shareId" />
+      <header v-if="!shareId" class="mb-6 sm:mb-8">
+        <div>
+          <p class="mb-2 text-[0.7rem] font-semibold uppercase tracking-[0.2em] text-teal-700">
+            Redis document vault
+          </p>
+          <h1 class="mb-3 font-['Space\\ Grotesk'] text-3xl sm:text-5xl">
+            Quan ly tai lieu tam thoi
+          </h1>
+          <p class="max-w-xl text-[#6f655b]">
+            Upload moi loai file duoi 20MB, luu trong Redis 1 gio, tai xuong bat cu luc nao khi con
+            han.
+          </p>
+        </div>
+      </header>
 
-    <main class="grid" v-if="!shareId">
-      <UploadCard :api-base="API_BASE" @uploaded="refresh" />
-
-      <DocumentList
-        :api-base="API_BASE"
-        :docs="docs"
-        :loading="loading"
-        :now="now"
-        @refresh="refresh"
-      />
-    </main>
+      <main v-if="!shareId" class="flex w-full justify-center">
+        <DocumentList :api-base="API_BASE" :docs="docs" :loading="loading" :now="now" @refresh="refresh">
+          <template #actions>
+            <UploadCard :api-base="API_BASE" @uploaded="refresh" />
+          </template>
+        </DocumentList>
+      </main>
+    </div>
   </div>
 </template>

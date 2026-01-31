@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
 import type { DocumentItem } from '../types/documents'
+import { Clock, Eye, FileDown, RefreshCcw, Share2 } from 'lucide-vue-next'
 
 const props = defineProps<{
   apiBase: string
@@ -18,6 +19,9 @@ const previewName = ref('')
 const shareUrl = ref('')
 const shareName = ref('')
 const shareStatus = ref('')
+const extendMinutes = ref('30')
+const extendStatus = ref('')
+const extendTarget = ref<DocumentItem | null>(null)
 
 const joinUrl = (base: string, path: string) => base.replace(/\/$/, '') + path
 
@@ -109,6 +113,52 @@ const copyShare = async () => {
 
 const isImageDoc = (contentType: string) => contentType?.startsWith('image/')
 
+const openExtend = (doc: DocumentItem) => {
+  extendTarget.value = doc
+  extendMinutes.value = '30'
+  extendStatus.value = ''
+}
+
+const closeExtend = () => {
+  extendTarget.value = null
+  extendMinutes.value = '30'
+  extendStatus.value = ''
+}
+
+const extendDocument = async () => {
+  if (!extendTarget.value) return
+  const raw = extendMinutes.value || '30'
+  const minutes = Number(raw)
+  if (!Number.isFinite(minutes) || minutes <= 0) {
+    extendStatus.value = 'Nhap so phut hop le'
+    return
+  }
+  if (minutes > 720) {
+    extendStatus.value = 'Toi da 720 phut'
+    return
+  }
+
+  extendStatus.value = 'Dang gia han...'
+  try {
+    const response = await fetch(
+      joinUrl(props.apiBase, `/api/documents/${extendTarget.value.id}/extend`),
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ minutes })
+      }
+    )
+    if (!response.ok) {
+      const data = await response.json().catch(() => ({}))
+      throw new Error(data.message || 'Gia han that bai')
+    }
+    extendStatus.value = 'Da gia han'
+    emit('refresh')
+  } catch (err) {
+    extendStatus.value = err instanceof Error ? err.message : 'Da co loi xay ra'
+  }
+}
+
 watch(
   () => displayDocs.value.length,
   () => {
@@ -118,119 +168,244 @@ watch(
 </script>
 
 <template>
-  <section class="card list-card">
-    <div class="list-header">
+  <section
+    class="w-full rounded-2xl border border-[#e2d8ca] bg-white/90 p-5 shadow-[0_18px_45px_rgba(35,30,25,0.12)] backdrop-blur sm:p-7">
+    <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
       <div>
-        <h2>Danh sach file con han</h2>
-        <p>Cap nhat moi 30s, ban co the refresh thu cong.</p>
+        <h2 class="mb-1 font-['Space\\ Grotesk'] text-xl">Danh sach file con han</h2>
+        <p class="text-sm text-[#6f655b]">Cap nhat moi 30s, ban co the refresh thu cong.</p>
       </div>
-      <button class="button ghost" type="button" :disabled="loading" @click="emit('refresh')">
-        {{ loading ? 'Dang tai...' : 'Refresh' }}
-      </button>
+      <div class="flex flex-wrap items-center gap-2">
+        <slot name="actions"></slot>
+        <button
+          class="inline-flex h-10 w-10 items-center justify-center rounded-full border border-[#b3a79a] text-[#6f655b] transition hover:-translate-y-0.5 hover:shadow-sm disabled:opacity-60"
+          type="button" :disabled="loading" @click="emit('refresh')" aria-label="Refresh" title="Refresh">
+          <RefreshCcw :size="18" />
+        </button>
+      </div>
     </div>
 
-    <div v-if="loading" class="list">
-      <div v-for="n in perPage" :key="n" class="list-item skeleton-item">
-        <div class="file-info">
-          <div class="skeleton skeleton-title"></div>
-          <div class="file-meta">
-            <span class="skeleton skeleton-chip"></span>
-            <span class="skeleton skeleton-chip"></span>
+    <div v-if="loading" class="mt-4 space-y-3">
+      <div v-for="n in perPage" :key="n"
+        class="flex items-center justify-between gap-4 rounded-xl border border-dashed border-[#d6cbbb] bg-white/80 p-4 animate-pulse">
+        <div class="space-y-2">
+          <div class="h-4 w-40 rounded-full bg-teal-100/70"></div>
+          <div class="flex gap-2">
+            <div class="h-4 w-16 rounded-full bg-teal-100/70"></div>
+            <div class="h-4 w-16 rounded-full bg-teal-100/70"></div>
           </div>
         </div>
-        <div class="file-actions">
-          <span class="skeleton skeleton-chip"></span>
-          <span class="skeleton skeleton-button"></span>
+        <div class="flex items-center gap-2">
+          <div class="h-4 w-16 rounded-full bg-teal-100/70"></div>
+          <div class="h-8 w-16 rounded-full bg-teal-100/70"></div>
         </div>
       </div>
     </div>
-    <div v-else-if="displayDocs.length === 0" class="placeholder empty">
+
+    <div v-else-if="displayDocs.length === 0"
+      class="mt-4 rounded-xl border border-dashed border-[#b3a79a] bg-white/70 px-6 py-8 text-center font-semibold text-[#6f655b]">
       Chua co file nao con han.
     </div>
-    <div v-else class="list">
-      <div v-for="doc in pagedDocs" :key="doc.id" class="list-item">
-        <div class="file-info">
-          <div class="file-name">{{ doc.originalName }}</div>
-          <div class="file-meta">
-            <span>{{ formatBytes(doc.size) }}</span>
-            <span>•</span>
-            <span>{{ doc.contentType }}</span>
-          </div>
+
+    <div v-else class="mt-4">
+      <div class="hidden sm:block">
+        <div class="overflow-x-auto rounded-xl border border-[#e2d8ca] bg-white">
+          <table class="w-full table-fixed text-left text-sm">
+            <thead class="bg-[#eaf6f3] text-teal-800">
+              <tr>
+                <th class="w-[32%] px-4 py-3 font-semibold">Ten file</th>
+                <th class="w-[22%] px-4 py-3 font-semibold">Loai</th>
+                <th class="w-[12%] px-4 py-3 font-semibold">Dung luong</th>
+                <th class="w-[12%] px-4 py-3 font-semibold">Het han</th>
+                <th class="w-[22%] px-4 py-3 font-semibold">Hanh dong</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="doc in pagedDocs" :key="doc.id" class="border-b last:border-b-0">
+                <td class="px-4 py-3 align-middle">
+                  <div class="max-w-[260px] truncate font-semibold" :title="doc.originalName">
+                    {{ doc.originalName }}
+                  </div>
+                </td>
+                <td class="px-4 py-3 align-middle text-[#6f655b] break-all">
+                  {{ doc.contentType }}
+                </td>
+                <td class="px-4 py-3 align-middle text-[#6f655b]">{{ formatBytes(doc.size) }}</td>
+                <td class="px-4 py-3 align-middle">
+                  <span class="inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold" :class="doc.isExpiringSoon
+                    ? 'bg-orange-100 text-orange-700'
+                    : 'bg-[#e0f1ee] text-teal-800'
+                    " :title="`Het han sau ${doc.remainingSeconds}s`">
+                    {{ formatRemaining(doc.remainingSeconds) }}
+                  </span>
+                </td>
+                <td class="px-4 py-3 align-middle">
+                  <div class="flex items-center gap-2">
+                    <button v-if="isImageDoc(doc.contentType)"
+                      class="inline-flex h-9 w-9 items-center justify-center rounded-full border border-[#b3a79a] text-[#6f655b] transition hover:-translate-y-0.5 hover:shadow-sm"
+                      type="button" @click="openPreview(joinUrl(apiBase, doc.downloadUrl), doc.originalName)"
+                      aria-label="Xem" title="Xem">
+                      <Eye :size="18" />
+                    </button>
+                    <button
+                      class="inline-flex h-9 w-9 items-center justify-center rounded-full border border-[#b3a79a] text-[#6f655b] transition hover:-translate-y-0.5 hover:shadow-sm"
+                      type="button" @click="openExtend(doc)" aria-label="Gia han" title="Gia han">
+                      <Clock :size="18" />
+                    </button>
+                    <button
+                      class="inline-flex h-9 w-9 items-center justify-center rounded-full border border-[#b3a79a] text-[#6f655b] transition hover:-translate-y-0.5 hover:shadow-sm"
+                      type="button" @click="openShare(doc.id, doc.originalName)" aria-label="Chia se" title="Chia se">
+                      <Share2 :size="18" />
+                    </button>
+                    <a class="inline-flex h-9 w-9 items-center justify-center rounded-full border border-teal-500 text-teal-700 transition hover:-translate-y-0.5 hover:shadow-sm"
+                      :href="joinUrl(apiBase, doc.downloadUrl)" target="_blank" rel="noreferrer" aria-label="Tai xuong"
+                      title="Tai xuong">
+                      <FileDown :size="18" />
+                    </a>
+                  </div>
+                </td>
+              </tr>
+            </tbody>
+          </table>
         </div>
-        <div class="file-actions">
-          <span class="chip" :class="{ warn: doc.isExpiringSoon }" :title="`Het han sau ${doc.remainingSeconds}s`">
-            {{ formatRemaining(doc.remainingSeconds) }}
-          </span>
-          <button
-            v-if="isImageDoc(doc.contentType)"
-            class="button ghost"
-            type="button"
-            @click="openPreview(joinUrl(apiBase, doc.downloadUrl), doc.originalName)"
-          >
-            Xem
-          </button>
-          <button
-            class="button ghost"
-            type="button"
-            @click="openShare(doc.id, doc.originalName)"
-          >
-            Chia se
-          </button>
-          <a
-            class="button secondary"
-            :href="joinUrl(apiBase, doc.downloadUrl)"
-            target="_blank"
-            rel="noreferrer"
-          >
-            Tai xuong
-          </a>
+      </div>
+
+      <div class="space-y-3 sm:hidden">
+        <div v-for="doc in pagedDocs" :key="doc.id"
+          class="rounded-xl border border-[#e2d8ca] bg-white/95 p-4 shadow-sm">
+          <div class="text-sm font-semibold truncate" :title="doc.originalName">
+            {{ doc.originalName }}
+          </div>
+          <div class="mt-1 text-xs text-[#6f655b] break-all">{{ doc.contentType }}</div>
+          <div class="mt-3 flex items-center justify-between text-xs text-[#6f655b]">
+            <span>{{ formatBytes(doc.size) }}</span>
+            <span class="inline-flex items-center rounded-full px-3 py-1 text-[0.7rem] font-semibold" :class="doc.isExpiringSoon
+              ? 'bg-orange-100 text-orange-700'
+              : 'bg-[#e0f1ee] text-teal-800'
+              " :title="`Het han sau ${doc.remainingSeconds}s`">
+              {{ formatRemaining(doc.remainingSeconds) }}
+            </span>
+          </div>
+          <div class="mt-3 flex flex-wrap items-center gap-2">
+            <button v-if="isImageDoc(doc.contentType)"
+              class="inline-flex h-9 w-9 items-center justify-center rounded-full border border-[#b3a79a] text-[#6f655b] transition hover:-translate-y-0.5 hover:shadow-sm"
+              type="button" @click="openPreview(joinUrl(apiBase, doc.downloadUrl), doc.originalName)" aria-label="Xem"
+              title="Xem">
+              <Eye :size="18" />
+            </button>
+            <button
+              class="inline-flex h-9 w-9 items-center justify-center rounded-full border border-[#b3a79a] text-[#6f655b] transition hover:-translate-y-0.5 hover:shadow-sm"
+              type="button" @click="openExtend(doc)" aria-label="Gia han" title="Gia han">
+              <Clock :size="18" />
+            </button>
+            <button
+              class="inline-flex h-9 w-9 items-center justify-center rounded-full border border-[#b3a79a] text-[#6f655b] transition hover:-translate-y-0.5 hover:shadow-sm"
+              type="button" @click="openShare(doc.id, doc.originalName)" aria-label="Chia se" title="Chia se">
+              <Share2 :size="18" />
+            </button>
+            <a class="inline-flex h-9 w-9 items-center justify-center rounded-full border border-teal-500 text-teal-700 transition hover:-translate-y-0.5 hover:shadow-sm"
+              :href="joinUrl(apiBase, doc.downloadUrl)" target="_blank" rel="noreferrer" aria-label="Tai xuong"
+              title="Tai xuong">
+              <FileDown :size="18" />
+            </a>
+          </div>
         </div>
       </div>
     </div>
 
-    <div v-if="!loading && displayDocs.length > perPage" class="pagination">
-      <button class="button ghost" type="button" :disabled="!canPrev" @click="toPrev">
+    <div v-if="!loading && displayDocs.length > perPage" class="mt-4 flex items-center justify-center gap-4">
+      <button
+        class="rounded-full border border-[#b3a79a] px-4 py-2 text-sm text-[#6f655b] transition hover:-translate-y-0.5 hover:shadow-sm disabled:opacity-60"
+        type="button" :disabled="!canPrev" @click="toPrev">
         Trang truoc
       </button>
-      <span class="page-status">Trang {{ page }} / {{ totalPages }}</span>
-      <button class="button ghost" type="button" :disabled="!canNext" @click="toNext">
+      <span class="text-sm font-semibold text-[#6f655b]">Trang {{ page }} / {{ totalPages }}</span>
+      <button
+        class="rounded-full border border-[#b3a79a] px-4 py-2 text-sm text-[#6f655b] transition hover:-translate-y-0.5 hover:shadow-sm disabled:opacity-60"
+        type="button" :disabled="!canNext" @click="toNext">
         Trang sau
       </button>
     </div>
 
-    <div v-if="previewUrl" class="preview-overlay" @click.self="closePreview">
-      <div class="preview-modal">
-        <div class="preview-header">
-          <div class="preview-title">{{ previewName }}</div>
-          <button class="button ghost" type="button" @click="closePreview">Dong</button>
+    <Teleport to="body">
+      <div v-if="previewUrl" class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
+        @click.self="closePreview">
+        <div
+          class="w-full max-w-2xl max-h-[85vh] overflow-auto rounded-2xl border border-[#e2d8ca] bg-white p-5 shadow-[0_18px_45px_rgba(35,30,25,0.12)]">
+          <div class="mb-3 flex items-center justify-between gap-3">
+            <div class="font-semibold text-[#1f1b16] truncate" :title="previewName">{{ previewName }}</div>
+            <button class="rounded-full border border-[#b3a79a] px-3 py-1 text-sm text-[#6f655b]" type="button"
+              @click="closePreview">
+              Dong
+            </button>
+          </div>
+          <img class="max-h-[60vh] w-full rounded-xl bg-teal-50 object-contain" :src="previewUrl" :alt="previewName" />
         </div>
-        <img class="preview-image" :src="previewUrl" :alt="previewName" />
       </div>
-    </div>
+    </Teleport>
 
-    <div v-if="shareUrl" class="preview-overlay" @click.self="closeShare">
-      <div class="share-modal">
-        <div class="preview-header">
-          <div class="preview-title">Link chia se: {{ shareName }}</div>
-          <button class="button ghost" type="button" @click="closeShare">Dong</button>
-        </div>
-        <div class="share-field">
-          <input
-            class="share-link"
-            type="text"
-            :value="shareUrl"
-            readonly
-            @focus="($event.target as HTMLInputElement).select()"
-          />
-          <div class="share-status">{{ shareStatus || 'Link nay mo trang chia se.' }}</div>
-        </div>
-        <div class="share-actions">
-          <button class="button ghost" type="button" @click="copyShare">Copy link</button>
-          <a class="button secondary" :href="shareUrl" target="_blank" rel="noreferrer">
-            Mo trang chia se
-          </a>
+    <Teleport to="body">
+      <div v-if="shareUrl" class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
+        @click.self="closeShare">
+        <div
+          class="w-full max-w-lg max-h-[85vh] overflow-auto rounded-2xl border border-[#e2d8ca] bg-white p-5 shadow-[0_18px_45px_rgba(35,30,25,0.12)]">
+          <div class="mb-3 flex items-center justify-between gap-3">
+            <div class="font-semibold text-[#1f1b16] truncate" :title="`Link chia se: ${shareName}`">
+              Link chia se: {{ shareName }}
+            </div>
+            <button class="rounded-full border border-[#b3a79a] px-3 py-1 text-sm text-[#6f655b]" type="button"
+              @click="closeShare">
+              Dong
+            </button>
+          </div>
+          <div class="grid gap-2">
+            <input class="w-full rounded-xl border border-[#cfe3dd] bg-white px-3 py-2 text-sm text-[#1f1b16]"
+              type="text" :value="shareUrl" readonly @focus="($event.target as HTMLInputElement).select()" />
+            <div class="text-sm text-[#6f655b]">{{ shareStatus || 'Link nay mo trang chia se.' }}</div>
+          </div>
+          <div class="mt-3 flex flex-wrap gap-2">
+            <button class="rounded-full border border-[#b3a79a] px-4 py-2 text-sm text-[#6f655b]" type="button"
+              @click="copyShare">
+              Copy link
+            </button>
+            <a class="rounded-full border border-[#cfe3dd] px-4 py-2 text-sm text-teal-700" :href="shareUrl"
+              target="_blank" rel="noreferrer">
+              Mo trang chia se
+            </a>
+          </div>
         </div>
       </div>
-    </div>
+    </Teleport>
+
+    <Teleport to="body">
+      <div v-if="extendTarget" class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
+        @click.self="closeExtend">
+        <div
+          class="w-full max-w-md max-h-[85vh] overflow-auto rounded-2xl border border-[#e2d8ca] bg-white p-5 shadow-[0_18px_45px_rgba(35,30,25,0.12)]">
+          <div class="mb-3 flex items-center justify-between gap-3">
+            <div class="font-semibold text-[#1f1b16] truncate" :title="`Gia han: ${extendTarget.originalName}`">
+              Gia han: {{ extendTarget.originalName }}
+            </div>
+            <button class="rounded-full border border-[#b3a79a] px-3 py-1 text-sm text-[#6f655b]" type="button"
+              @click="closeExtend">
+              Dong
+            </button>
+          </div>
+          <div class="flex flex-wrap items-center gap-2">
+            <input class="w-24 rounded-full border border-[#cfe3dd] bg-white px-3 py-2 text-sm text-[#1f1b16]"
+              type="number" min="1" max="720" step="10" v-model="extendMinutes" />
+            <span class="text-sm text-[#6f655b]">phut (toi da 720)</span>
+          </div>
+          <div class="mt-4 flex flex-wrap gap-2">
+            <button
+              class="rounded-full bg-gradient-to-r from-teal-700 to-orange-400 px-4 py-2 text-sm font-semibold text-white shadow-lg"
+              type="button" @click="extendDocument">
+              Gia han
+            </button>
+          </div>
+          <div class="mt-2 text-sm text-[#6f655b]">{{ extendStatus }}</div>
+        </div>
+      </div>
+    </Teleport>
   </section>
 </template>

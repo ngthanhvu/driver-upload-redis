@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, ref } from 'vue'
+import { Upload } from 'lucide-vue-next'
 
 const props = defineProps<{ apiBase: string }>()
 const emit = defineEmits<{ (e: 'uploaded'): void }>()
@@ -12,6 +13,7 @@ const error = ref('')
 const success = ref('')
 const isDragging = ref(false)
 const dragCounter = ref(0)
+const isDialogOpen = ref(false)
 
 const joinUrl = (base: string, path: string) => base.replace(/\/$/, '') + path
 const MAX_FILE_SIZE = 20 * 1024 * 1024
@@ -122,51 +124,82 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <section class="card upload-card">
-    <div class="card-title">
-      <h2>Upload tai lieu</h2>
-      <p>Chap nhan moi dinh dang file duoi 20MB.</p>
-    </div>
-    <div
-      class="uploader"
-      :class="{ dragging: isDragging }"
-      @dragenter="onDragEnter"
-      @dragover="onDragOver"
-      @dragleave="onDragLeave"
-      @drop="onDrop"
+  <div>
+    <button
+      class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-gradient-to-r from-teal-700 to-orange-400 text-white shadow-lg transition hover:-translate-y-0.5"
+      type="button"
+      @click="isDialogOpen = true"
+      aria-label="Upload"
+      title="Upload"
     >
-      <label class="file-input">
-        <input ref="fileInput" type="file" multiple @change="onFileChange" />
-        <span>{{ fileLabel }}</span>
-      </label>
-      <span class="drop-hint">Keo tha file vao day hoac bam de chon.</span>
-    </div>
-    <div v-if="previewUrls.length > 0" class="preview-grid">
-      <div
-        v-for="(url, index) in previewUrls"
-        :key="`${selectedFiles[index]?.name || 'file'}-${index}`"
-        class="preview-card"
-      >
-        <img v-if="url" :src="url" :alt="selectedFiles[index]?.name || 'preview'" />
-        <div v-else class="preview-icon">
-          {{
-            (selectedFiles[index]?.name || 'FILE')
-              .split('.')
-              .pop()
-              ?.slice(0, 4)
-              .toUpperCase()
-          }}
+      <Upload :size="18" />
+    </button>
+  </div>
+
+  <Teleport to="body">
+    <div
+      v-if="isDialogOpen"
+      class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
+      @click.self="isDialogOpen = false"
+    >
+      <div class="w-full max-w-2xl max-h-[85vh] overflow-auto rounded-2xl border border-[#e2d8ca] bg-white p-5 shadow-[0_18px_45px_rgba(35,30,25,0.12)]">
+        <div class="mb-3 flex items-center justify-between gap-3">
+          <div class="font-semibold text-[#1f1b16]">Upload tai lieu</div>
+          <button
+            class="rounded-full border border-[#b3a79a] px-3 py-1 text-sm text-[#6f655b]"
+            type="button"
+            @click="isDialogOpen = false"
+          >
+            Dong
+          </button>
         </div>
-        <div class="preview-name">{{ selectedFiles[index]?.name }}</div>
+        <div
+          class="flex flex-wrap items-center gap-3 rounded-2xl border border-dashed px-4 py-3"
+          :class="isDragging ? 'border-teal-600 bg-teal-50' : 'border-teal-200 bg-white/80'"
+          @dragenter="onDragEnter"
+          @dragover="onDragOver"
+          @dragleave="onDragLeave"
+          @drop="onDrop"
+        >
+          <label class="inline-flex cursor-pointer items-center gap-2 rounded-full border border-dashed border-teal-400 px-4 py-2 text-sm font-semibold text-teal-700">
+            <input ref="fileInput" class="hidden" type="file" multiple @change="onFileChange" />
+            <span>{{ fileLabel }}</span>
+          </label>
+          <span class="text-sm text-[#6f655b]">Keo tha file vao day hoac bam de chon.</span>
+        </div>
+        <div v-if="previewUrls.length > 0" class="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4">
+          <div
+            v-for="(url, index) in previewUrls"
+            :key="`${selectedFiles[index]?.name || 'file'}-${index}`"
+            class="rounded-xl border border-teal-100 bg-white p-2"
+          >
+            <img v-if="url" class="h-24 w-full rounded-lg object-cover" :src="url" :alt="selectedFiles[index]?.name || 'preview'" />
+            <div v-else class="grid h-24 place-items-center rounded-lg bg-teal-50 text-sm font-bold tracking-widest text-teal-800">
+              {{
+                (selectedFiles[index]?.name || 'FILE')
+                  .split('.')
+                  .pop()
+                  ?.slice(0, 4)
+                  .toUpperCase()
+              }}
+            </div>
+            <div class="mt-2 text-xs text-[#6f655b] break-all">{{ selectedFiles[index]?.name }}</div>
+          </div>
+        </div>
+        <button
+          class="mt-4 w-full rounded-full bg-gradient-to-r from-teal-700 to-orange-400 px-4 py-2 text-sm font-semibold text-white shadow-lg disabled:opacity-60"
+          type="button"
+          :disabled="uploading"
+          @click="upload"
+        >
+          {{ uploading ? 'Dang upload...' : 'Upload ngay' }}
+        </button>
+        <div class="mt-3 text-sm">
+          <span v-if="error" class="font-semibold text-red-600">{{ error }}</span>
+          <span v-else-if="success" class="font-semibold text-emerald-600">{{ success }}</span>
+          <span v-else class="text-[#6f655b]">Dung luong toi da 20MB.</span>
+        </div>
       </div>
     </div>
-    <button class="button primary" type="button" :disabled="uploading" @click="upload">
-      {{ uploading ? 'Dang upload...' : 'Upload ngay' }}
-    </button>
-    <div class="status">
-      <span v-if="error" class="error">{{ error }}</span>
-      <span v-else-if="success" class="success">{{ success }}</span>
-      <span v-else class="muted">Dung luong toi da 20MB.</span>
-    </div>
-  </section>
+  </Teleport>
 </template>
