@@ -183,6 +183,22 @@ h2 {
   border-radius: 8px;
 }
 
+.preview-icon {
+  display: grid;
+  place-items: center;
+  height: 90px;
+  border-radius: 8px;
+  background: rgba(15, 124, 117, 0.08);
+  color: var(--accent-strong);
+  font-weight: 700;
+  letter-spacing: 0.08em;
+}
+
+.preview-icon.large {
+  height: 220px;
+  font-size: 1.4rem;
+}
+
 .preview-name {
   font-size: 0.8rem;
   color: var(--muted);
@@ -334,6 +350,66 @@ h2 {
   background: rgba(15, 124, 117, 0.06);
 }
 
+.share-modal {
+  width: min(560px, 100%);
+  background: var(--card-strong);
+  border-radius: 18px;
+  box-shadow: var(--shadow);
+  border: 1px solid var(--border);
+  padding: 18px;
+  display: grid;
+  gap: 12px;
+}
+
+.share-field {
+  display: grid;
+  gap: 8px;
+}
+
+.share-link {
+  width: 100%;
+  padding: 12px 14px;
+  border-radius: 12px;
+  border: 1px solid rgba(15, 124, 117, 0.2);
+  font-size: 0.95rem;
+  color: var(--ink);
+  background: rgba(255, 255, 255, 0.9);
+}
+
+.share-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  justify-content: flex-start;
+}
+
+.share-status {
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
+.share-page {
+  display: grid;
+  gap: 18px;
+}
+
+.share-body {
+  display: grid;
+  gap: 18px;
+  grid-template-columns: minmax(0, 1.2fr) minmax(0, 0.8fr);
+  align-items: start;
+}
+
+.share-preview {
+  display: grid;
+  gap: 12px;
+}
+
+.share-info {
+  display: grid;
+  gap: 10px;
+}
+
 .button {
   border: none;
   border-radius: 999px;
@@ -436,5 +512,9 @@ h2 {
   .file-actions {
     width: 100%;
     justify-content: space-between;
+  }
+
+  .share-body {
+    grid-template-columns: 1fr;
   }
 }

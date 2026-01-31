@@ -15,6 +15,9 @@ const page = ref(1)
 const perPage = 6
 const previewUrl = ref('')
 const previewName = ref('')
+const shareUrl = ref('')
+const shareName = ref('')
+const shareStatus = ref('')
 
 const joinUrl = (base: string, path: string) => base.replace(/\/$/, '') + path
 
@@ -78,6 +81,34 @@ const closePreview = () => {
   previewName.value = ''
 }
 
+const openShare = (id: string, name: string) => {
+  shareUrl.value = `${window.location.origin}/share/${id}`
+  shareName.value = name
+  shareStatus.value = ''
+}
+
+const closeShare = () => {
+  shareUrl.value = ''
+  shareName.value = ''
+  shareStatus.value = ''
+}
+
+const copyShare = async () => {
+  if (!shareUrl.value) return
+  try {
+    if (navigator.clipboard?.writeText) {
+      await navigator.clipboard.writeText(shareUrl.value)
+      shareStatus.value = 'Da copy link'
+    } else {
+      shareStatus.value = 'Trinh duyet khong ho tro copy'
+    }
+  } catch {
+    shareStatus.value = 'Khong the copy link'
+  }
+}
+
+const isImageDoc = (contentType: string) => contentType?.startsWith('image/')
+
 watch(
   () => displayDocs.value.length,
   () => {
@@ -131,11 +162,19 @@ watch(
             {{ formatRemaining(doc.remainingSeconds) }}
           </span>
           <button
+            v-if="isImageDoc(doc.contentType)"
             class="button ghost"
             type="button"
             @click="openPreview(joinUrl(apiBase, doc.downloadUrl), doc.originalName)"
           >
             Xem
+          </button>
+          <button
+            class="button ghost"
+            type="button"
+            @click="openShare(doc.id, doc.originalName)"
+          >
+            Chia se
           </button>
           <a
             class="button secondary"
@@ -166,6 +205,31 @@ watch(
           <button class="button ghost" type="button" @click="closePreview">Dong</button>
         </div>
         <img class="preview-image" :src="previewUrl" :alt="previewName" />
+      </div>
+    </div>
+
+    <div v-if="shareUrl" class="preview-overlay" @click.self="closeShare">
+      <div class="share-modal">
+        <div class="preview-header">
+          <div class="preview-title">Link chia se: {{ shareName }}</div>
+          <button class="button ghost" type="button" @click="closeShare">Dong</button>
+        </div>
+        <div class="share-field">
+          <input
+            class="share-link"
+            type="text"
+            :value="shareUrl"
+            readonly
+            @focus="($event.target as HTMLInputElement).select()"
+          />
+          <div class="share-status">{{ shareStatus || 'Link nay mo trang chia se.' }}</div>
+        </div>
+        <div class="share-actions">
+          <button class="button ghost" type="button" @click="copyShare">Copy link</button>
+          <a class="button secondary" :href="shareUrl" target="_blank" rel="noreferrer">
+            Mo trang chia se
+          </a>
+        </div>
       </div>
     </div>
   </section>

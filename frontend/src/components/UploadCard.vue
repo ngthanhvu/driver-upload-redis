@@ -14,25 +14,30 @@ const isDragging = ref(false)
 const dragCounter = ref(0)
 
 const joinUrl = (base: string, path: string) => base.replace(/\/$/, '') + path
+const MAX_FILE_SIZE = 20 * 1024 * 1024
 
 const fileLabel = computed(() => {
-  if (selectedFiles.value.length === 0) return 'Chon file hinh anh'
+  if (selectedFiles.value.length === 0) return 'Chon file'
   if (selectedFiles.value.length === 1) {
     const firstFile = selectedFiles.value[0]
-    return firstFile ? firstFile.name : 'Chon file hinh anh'
+    return firstFile ? firstFile.name : 'Chon file'
   }
   return `Da chon ${selectedFiles.value.length} files`
 })
 
 const clearPreviews = () => {
-  previewUrls.value.forEach((url) => URL.revokeObjectURL(url))
+  previewUrls.value.forEach((url) => {
+    if (url) URL.revokeObjectURL(url)
+  })
   previewUrls.value = []
 }
 
 const setFiles = (files: File[]) => {
   clearPreviews()
   selectedFiles.value = files
-  previewUrls.value = files.map((file) => URL.createObjectURL(file))
+  previewUrls.value = files.map((file) =>
+    file.type.startsWith('image/') ? URL.createObjectURL(file) : ''
+  )
   success.value = ''
   error.value = ''
 }
@@ -71,12 +76,12 @@ const onDrop = (event: DragEvent) => {
 
 const upload = async () => {
   if (selectedFiles.value.length === 0) {
-    error.value = 'Vui long chon file hinh anh'
+    error.value = 'Vui long chon file'
     return
   }
-  const invalidFiles = selectedFiles.value.filter((file) => !file.type.startsWith('image/'))
-  if (invalidFiles.length > 0) {
-    error.value = 'Chi chap nhan file hinh anh'
+  const oversizeFiles = selectedFiles.value.filter((file) => file.size > MAX_FILE_SIZE)
+  if (oversizeFiles.length > 0) {
+    error.value = 'File vuot qua 20MB, vui long chon file nho hon'
     return
   }
   uploading.value = true
@@ -120,7 +125,7 @@ onBeforeUnmount(() => {
   <section class="card upload-card">
     <div class="card-title">
       <h2>Upload tai lieu</h2>
-      <p>Chi chap nhan file hinh anh (jpg, png, webp...).</p>
+      <p>Chap nhan moi dinh dang file duoi 20MB.</p>
     </div>
     <div
       class="uploader"
@@ -131,14 +136,27 @@ onBeforeUnmount(() => {
       @drop="onDrop"
     >
       <label class="file-input">
-        <input ref="fileInput" type="file" accept="image/*" multiple @change="onFileChange" />
+        <input ref="fileInput" type="file" multiple @change="onFileChange" />
         <span>{{ fileLabel }}</span>
       </label>
       <span class="drop-hint">Keo tha file vao day hoac bam de chon.</span>
     </div>
     <div v-if="previewUrls.length > 0" class="preview-grid">
-      <div v-for="(url, index) in previewUrls" :key="url" class="preview-card">
-        <img :src="url" :alt="selectedFiles[index]?.name || 'preview'" />
+      <div
+        v-for="(url, index) in previewUrls"
+        :key="`${selectedFiles[index]?.name || 'file'}-${index}`"
+        class="preview-card"
+      >
+        <img v-if="url" :src="url" :alt="selectedFiles[index]?.name || 'preview'" />
+        <div v-else class="preview-icon">
+          {{
+            (selectedFiles[index]?.name || 'FILE')
+              .split('.')
+              .pop()
+              ?.slice(0, 4)
+              .toUpperCase()
+          }}
+        </div>
         <div class="preview-name">{{ selectedFiles[index]?.name }}</div>
       </div>
     </div>
@@ -148,7 +166,7 @@ onBeforeUnmount(() => {
     <div class="status">
       <span v-if="error" class="error">{{ error }}</span>
       <span v-else-if="success" class="success">{{ success }}</span>
-      <span v-else class="muted">Dung luong toi da 10MB.</span>
+      <span v-else class="muted">Dung luong toi da 20MB.</span>
     </div>
   </section>
 </template>

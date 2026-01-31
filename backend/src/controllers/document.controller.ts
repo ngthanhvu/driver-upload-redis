@@ -4,8 +4,6 @@ import { redisClient } from "../config/redis";
 
 const ONE_HOUR_SECONDS = 60 * 60;
 
-const isImage = (mimeType: string) => mimeType.startsWith("image/");
-
 const safeFilename = (name: string) => {
     const trimmed = name.trim();
     if (!trimmed) return "";
@@ -16,10 +14,6 @@ export const uploadDocument = async (req: Request, res: Response) => {
     const file = req.file;
     if (!file) {
         return res.status(400).json({ message: "File is required." });
-    }
-
-    if (!isImage(file.mimetype)) {
-        return res.status(400).json({ message: "Only image files are allowed." });
     }
 
     const id = randomUUID();

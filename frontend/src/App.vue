@@ -2,6 +2,7 @@
 import { onBeforeUnmount, onMounted, ref } from 'vue'
 import UploadCard from './components/UploadCard.vue'
 import DocumentList from './components/DocumentList.vue'
+import SharePage from './components/SharePage.vue'
 import type { DocumentItem } from './types/documents'
 
 const API_BASE = (import.meta.env.VITE_API_BASE || '').trim()
@@ -9,6 +10,12 @@ const API_BASE = (import.meta.env.VITE_API_BASE || '').trim()
 const docs = ref<DocumentItem[]>([])
 const loading = ref(false)
 const now = ref(Date.now())
+const shareId = ref('')
+
+const resolveShareId = () => {
+  const match = window.location.pathname.match(/^\/share\/([^/]+)\/?$/)
+  shareId.value = match?.[1] || ''
+}
 
 let tickTimer: number | undefined
 let refreshTimer: number | undefined
@@ -34,6 +41,8 @@ const refresh = async () => {
 }
 
 onMounted(async () => {
+  resolveShareId()
+  if (shareId.value) return
   await fetchDocs()
   tickTimer = window.setInterval(() => {
     now.value = Date.now()
@@ -49,17 +58,18 @@ onBeforeUnmount(() => {
 
 <template>
   <div class="page">
-    <header class="hero">
+    <SharePage v-if="shareId" :api-base="API_BASE" :id="shareId" />
+    <header class="hero" v-if="!shareId">
       <div>
         <p class="eyebrow">Redis document vault</p>
         <h1>Quan ly tai lieu tam thoi</h1>
         <p class="subtitle">
-          Upload anh tai lieu, luu trong Redis 1 gio, tai xuong bat cu luc nao khi con han.
+          Upload moi loai file duoi 20MB, luu trong Redis 1 gio, tai xuong bat cu luc nao khi con han.
         </p>
       </div>
     </header>
 
-    <main class="grid">
+    <main class="grid" v-if="!shareId">
       <UploadCard :api-base="API_BASE" @uploaded="refresh" />
 
       <DocumentList
