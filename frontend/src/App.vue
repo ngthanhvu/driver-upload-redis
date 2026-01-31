@@ -8,7 +8,8 @@ import type { DocumentItem } from './types/documents'
 const API_BASE = (import.meta.env.VITE_API_BASE || '').trim()
 
 const docs = ref<DocumentItem[]>([])
-const loading = ref(false)
+const loading = ref(true)
+const refreshing = ref(false)
 const now = ref(Date.now())
 const shareId = ref('')
 
@@ -22,8 +23,12 @@ let refreshTimer: number | undefined
 
 const joinUrl = (base: string, path: string) => base.replace(/\/$/, '') + path
 
-const fetchDocs = async () => {
-  loading.value = true
+const fetchDocs = async (silent = false) => {
+  if (!silent) {
+    loading.value = true
+  } else {
+    refreshing.value = true
+  }
   try {
     const response = await fetch(joinUrl(API_BASE, '/api/documents'))
     if (!response.ok) {
@@ -32,12 +37,15 @@ const fetchDocs = async () => {
     const data = (await response.json()) as { items: DocumentItem[] }
     docs.value = data.items || []
   } finally {
-    loading.value = false
+    if (!silent) {
+      loading.value = false
+    }
+    refreshing.value = false
   }
 }
 
 const refresh = async () => {
-  await fetchDocs()
+  await fetchDocs(true)
 }
 
 onMounted(async () => {
@@ -47,7 +55,7 @@ onMounted(async () => {
   tickTimer = window.setInterval(() => {
     now.value = Date.now()
   }, 1000)
-  refreshTimer = window.setInterval(fetchDocs, 30000)
+  refreshTimer = window.setInterval(() => fetchDocs(true), 30000)
 })
 
 onBeforeUnmount(() => {
@@ -78,7 +86,14 @@ onBeforeUnmount(() => {
       </header>
 
       <main v-if="!shareId" class="flex w-full justify-center">
-        <DocumentList :api-base="API_BASE" :docs="docs" :loading="loading" :now="now" @refresh="refresh">
+        <DocumentList
+          :api-base="API_BASE"
+          :docs="docs"
+          :loading="loading"
+          :refreshing="refreshing"
+          :now="now"
+          @refresh="refresh"
+        >
           <template #actions>
             <UploadCard :api-base="API_BASE" @uploaded="refresh" />
           </template>

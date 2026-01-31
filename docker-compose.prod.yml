@@ -29,12 +29,11 @@ services:
     image: mongo:7
     container_name: drive-mongo-prod
     restart: unless-stopped
-    logging: *default-logging
     volumes:
       - mongo-data:/data/db
-    command: mongod --wiredTigerCacheSizeGB 0.05 --bind_ip_all
-    mem_limit: 256M
-    mem_reservation: 128M
+    command: mongod --wiredTigerCacheSizeGB 0.25 --bind_ip_all
+    mem_limit: 512M
+    mem_reservation: 256M
     cpus: "0.50"
 
   backend:

@@ -7,6 +7,7 @@ const props = defineProps<{
   apiBase: string
   docs: DocumentItem[]
   loading: boolean
+  refreshing: boolean
   now: number
 }>()
 
@@ -179,13 +180,18 @@ watch(
         <slot name="actions"></slot>
         <button
           class="inline-flex h-10 w-10 items-center justify-center rounded-full border border-[#b3a79a] text-[#6f655b] transition hover:-translate-y-0.5 hover:shadow-sm disabled:opacity-60"
-          type="button" :disabled="loading" @click="emit('refresh')" aria-label="Refresh" title="Refresh">
-          <RefreshCcw :size="18" />
+          type="button"
+          :disabled="refreshing"
+          @click="emit('refresh')"
+          aria-label="Refresh"
+          title="Refresh"
+        >
+          <RefreshCcw :size="18" :class="refreshing ? 'animate-spin' : ''" />
         </button>
       </div>
     </div>
 
-    <div v-if="loading" class="mt-4 space-y-3">
+    <div v-if="loading && displayDocs.length === 0" class="mt-4 space-y-3">
       <div v-for="n in perPage" :key="n"
         class="flex items-center justify-between gap-4 rounded-xl border border-dashed border-[#d6cbbb] bg-white/80 p-4 animate-pulse">
         <div class="space-y-2">
