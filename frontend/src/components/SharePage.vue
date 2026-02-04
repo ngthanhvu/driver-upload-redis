@@ -17,6 +17,8 @@ const contentType = ref('')
 const size = ref(0)
 const status = ref('')
 const shareStatus = ref('')
+const permanent = ref(false)
+const expiresAt = ref<number | null>(null)
 
 const formatBytes = (bytes: number) => {
   if (!bytes) return '0 B'
@@ -40,6 +42,9 @@ const fetchHead = async () => {
   contentType.value = response.headers.get('content-type') || ''
   size.value = Number(response.headers.get('content-length') || 0)
   fileName.value = parseFilename(response.headers.get('content-disposition'))
+  permanent.value = (response.headers.get('x-document-permanent') || '').toLowerCase() === 'true'
+  const rawExpiresAt = Number(response.headers.get('x-document-expires-at') || 0)
+  expiresAt.value = Number.isFinite(rawExpiresAt) && rawExpiresAt > 0 ? rawExpiresAt : null
 }
 
 const downloadFile = async () => {
@@ -108,7 +113,9 @@ onMounted(async () => {
     class="w-full max-w-5xl rounded-2xl border border-[#e2d8ca] bg-white/90 p-5 shadow-[0_18px_45px_rgba(35,30,25,0.12)] backdrop-blur sm:p-7">
     <div class="mb-4">
       <h2 class="mb-1 font-['Space\\ Grotesk'] text-xl">Chia se tai lieu</h2>
-      <p class="text-sm text-[#6f655b]">Link rut gon, file se het han sau 1 gio.</p>
+      <p class="text-sm text-[#6f655b]">
+        {{ permanent ? 'File duoc luu vinh vien.' : 'Link rut gon, file se tu dong het han.' }}
+      </p>
     </div>
 
     <div v-if="loading"
@@ -136,6 +143,15 @@ onMounted(async () => {
           <span>{{ formatBytes(size) }}</span>
           <span>•</span>
           <span class="break-all">{{ contentType || 'unknown' }}</span>
+        </div>
+        <div class="text-sm text-[#6f655b]">
+          {{
+            permanent
+              ? 'Trang thai: Vinh vien'
+              : expiresAt
+                ? `Het han luc ${new Date(expiresAt).toLocaleString()}`
+                : 'Trang thai: Tam thoi'
+          }}
         </div>
         <button class="flex w-full items-center justify-center gap-2 rounded-full
           bg-linear-to-r from-teal-700 to-orange-400

@@ -34,7 +34,8 @@ const formatBytes = (bytes: number) => {
   return `${value.toFixed(value < 10 && index > 0 ? 1 : 0)} ${units[index]}`
 }
 
-const formatRemaining = (seconds: number) => {
+const formatRemaining = (seconds: number | null) => {
+  if (seconds === null) return 'Vinh vien'
   const clamped = Math.max(0, seconds)
   const hours = Math.floor(clamped / 3600)
   const minutes = Math.floor((clamped % 3600) / 60)
@@ -48,14 +49,25 @@ const formatRemaining = (seconds: number) => {
 const displayDocs = computed(() =>
   [...props.docs]
     .map((doc) => {
-      const remainingSeconds = Math.max(0, Math.floor((doc.expiresAt - props.now) / 1000))
+      const remainingSeconds =
+        doc.permanent || doc.expiresAt === null
+          ? null
+          : Math.max(0, Math.floor((doc.expiresAt - props.now) / 1000))
       return {
         ...doc,
         remainingSeconds,
-        isExpiringSoon: remainingSeconds <= 120
+        isExpiringSoon: remainingSeconds !== null && remainingSeconds <= 120
       }
     })
-    .sort((a, b) => a.expiresAt - b.expiresAt)
+    .sort((a, b) => {
+      if (a.permanent !== b.permanent) {
+        return Number(a.permanent) - Number(b.permanent)
+      }
+      if (a.permanent) {
+        return b.createdAt - a.createdAt
+      }
+      return (a.expiresAt || 0) - (b.expiresAt || 0)
+    })
 )
 
 const totalPages = computed(() => Math.max(1, Math.ceil(displayDocs.value.length / perPage)))
@@ -173,8 +185,8 @@ watch(
     class="w-full rounded-2xl border border-[#e2d8ca] bg-white/90 p-5 shadow-[0_18px_45px_rgba(35,30,25,0.12)] backdrop-blur sm:p-7">
     <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
       <div>
-        <h2 class="mb-1 font-['Space\\ Grotesk'] text-xl">Danh sach file con han</h2>
-        <p class="text-sm text-[#6f655b]">Cap nhat moi 30s, ban co the refresh thu cong.</p>
+        <h2 class="mb-1 font-['Space\\ Grotesk'] text-xl">Danh sach tai lieu</h2>
+        <p class="text-sm text-[#6f655b]">Cap nhat moi 30s, gom file tam thoi va file vinh vien.</p>
       </div>
       <div class="flex flex-wrap items-center gap-2">
         <slot name="actions"></slot>
@@ -210,7 +222,7 @@ watch(
 
     <div v-else-if="displayDocs.length === 0"
       class="mt-4 rounded-xl border border-dashed border-[#b3a79a] bg-white/70 px-6 py-8 text-center font-semibold text-[#6f655b]">
-      Chua co file nao con han.
+      Chua co file nao.
     </div>
 
     <div v-else class="mt-4">
@@ -238,10 +250,12 @@ watch(
                 </td>
                 <td class="px-4 py-3 align-middle text-[#6f655b]">{{ formatBytes(doc.size) }}</td>
                 <td class="px-4 py-3 align-middle">
-                  <span class="inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold" :class="doc.isExpiringSoon
-                    ? 'bg-orange-100 text-orange-700'
-                    : 'bg-[#e0f1ee] text-teal-800'
-                    " :title="`Het han sau ${doc.remainingSeconds}s`">
+                  <span class="inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold" :class="doc.permanent
+                    ? 'bg-emerald-100 text-emerald-700'
+                    : doc.isExpiringSoon
+                      ? 'bg-orange-100 text-orange-700'
+                      : 'bg-[#e0f1ee] text-teal-800'
+                    " :title="doc.permanent ? 'File vinh vien' : `Het han sau ${doc.remainingSeconds}s`">
                     {{ formatRemaining(doc.remainingSeconds) }}
                   </span>
                 </td>
@@ -253,7 +267,7 @@ watch(
                       aria-label="Xem" title="Xem">
                       <Eye :size="18" />
                     </button>
-                    <button
+                    <button v-if="!doc.permanent"
                       class="inline-flex h-9 w-9 items-center justify-center rounded-full border border-[#b3a79a] text-[#6f655b] transition hover:-translate-y-0.5 hover:shadow-sm"
                       type="button" @click="openExtend(doc)" aria-label="Gia han" title="Gia han">
                       <Clock :size="18" />
@@ -285,10 +299,12 @@ watch(
           <div class="mt-1 text-xs text-[#6f655b] break-all">{{ doc.contentType }}</div>
           <div class="mt-3 flex items-center justify-between text-xs text-[#6f655b]">
             <span>{{ formatBytes(doc.size) }}</span>
-            <span class="inline-flex items-center rounded-full px-3 py-1 text-[0.7rem] font-semibold" :class="doc.isExpiringSoon
-              ? 'bg-orange-100 text-orange-700'
-              : 'bg-[#e0f1ee] text-teal-800'
-              " :title="`Het han sau ${doc.remainingSeconds}s`">
+            <span class="inline-flex items-center rounded-full px-3 py-1 text-[0.7rem] font-semibold" :class="doc.permanent
+              ? 'bg-emerald-100 text-emerald-700'
+              : doc.isExpiringSoon
+                ? 'bg-orange-100 text-orange-700'
+                : 'bg-[#e0f1ee] text-teal-800'
+              " :title="doc.permanent ? 'File vinh vien' : `Het han sau ${doc.remainingSeconds}s`">
               {{ formatRemaining(doc.remainingSeconds) }}
             </span>
           </div>
@@ -299,7 +315,7 @@ watch(
               title="Xem">
               <Eye :size="18" />
             </button>
-            <button
+            <button v-if="!doc.permanent"
               class="inline-flex h-9 w-9 items-center justify-center rounded-full border border-[#b3a79a] text-[#6f655b] transition hover:-translate-y-0.5 hover:shadow-sm"
               type="button" @click="openExtend(doc)" aria-label="Gia han" title="Gia han">
               <Clock :size="18" />

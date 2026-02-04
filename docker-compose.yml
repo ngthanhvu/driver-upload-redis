@@ -1,14 +1,6 @@
 version: "3.9"
 
 services:
-  redis:
-    image: redis:7-alpine
-    container_name: drive-redis
-    ports:
-      - "6379:6379"
-    volumes:
-      - redis-data:/data
-
   mongo:
     image: mongo:7
     container_name: drive-mongo
@@ -25,15 +17,20 @@ services:
       - "5000:5000"
     environment:
       PORT: 5000
-      REDIS_URL: redis://redis:6379
       MONGO_URI: mongodb://mongo:27017/driveapp
       CORS_ORIGIN: http://localhost:5173
+      MINIO_ENDPOINT: ${MINIO_ENDPOINT}
+      MINIO_PORT: 443
+      MINIO_USE_SSL: "true"
+      MINIO_ACCESS_KEY: ${MINIO_ACCESS_KEY}
+      MINIO_SECRET_KEY: ${MINIO_SECRET_KEY}
+      MINIO_BUCKET: ${MINIO_BUCKET}
+      UPLOAD_AUTH_TOKEN: ${UPLOAD_AUTH_TOKEN}
       CHOKIDAR_USEPOLLING: "true"
     volumes:
       - ./backend:/app
       - /app/node_modules
     depends_on:
-      - redis
       - mongo
 
   frontend:
@@ -52,5 +49,4 @@ services:
       - backend
 
 volumes:
-  redis-data:
   mongo-data:

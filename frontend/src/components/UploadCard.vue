@@ -14,6 +14,8 @@ const success = ref('')
 const isDragging = ref(false)
 const dragCounter = ref(0)
 const isDialogOpen = ref(false)
+const uploadMode = ref<'temp' | 'permanent'>('temp')
+const uploadToken = ref('')
 
 const joinUrl = (base: string, path: string) => base.replace(/\/$/, '') + path
 const MAX_FILE_SIZE = 20 * 1024 * 1024
@@ -81,21 +83,36 @@ const upload = async () => {
     error.value = 'Vui long chon file'
     return
   }
+
+  if (uploadMode.value === 'permanent' && !uploadToken.value.trim()) {
+    error.value = 'Can nhap token de upload vinh vien'
+    return
+  }
+
   const oversizeFiles = selectedFiles.value.filter((file) => file.size > MAX_FILE_SIZE)
   if (oversizeFiles.length > 0) {
     error.value = 'File vuot qua 20MB, vui long chon file nho hon'
     return
   }
+
   uploading.value = true
   success.value = ''
   error.value = ''
   try {
     let successCount = 0
+    const path = uploadMode.value === 'permanent' ? '/api/documents/permanent' : '/api/documents'
+
     for (const file of selectedFiles.value) {
       const formData = new FormData()
       formData.append('file', file)
-      const response = await fetch(joinUrl(props.apiBase, '/api/documents'), {
+      const response = await fetch(joinUrl(props.apiBase, path), {
         method: 'POST',
+        headers:
+          uploadMode.value === 'permanent'
+            ? {
+                Authorization: `Bearer ${uploadToken.value.trim()}`
+              }
+            : undefined,
         body: formData
       })
       if (!response.ok) {
@@ -104,8 +121,17 @@ const upload = async () => {
       }
       successCount += 1
     }
-    success.value =
-      successCount === 1 ? 'Upload thanh cong' : `Upload thanh cong ${successCount} files`
+
+    if (uploadMode.value === 'permanent') {
+      success.value =
+        successCount === 1
+          ? 'Upload vinh vien thanh cong'
+          : `Upload vinh vien thanh cong ${successCount} files`
+    } else {
+      success.value =
+        successCount === 1 ? 'Upload tam thoi thanh cong' : `Upload tam thoi thanh cong ${successCount} files`
+    }
+
     setFiles([])
     if (fileInput.value) {
       fileInput.value.value = ''
@@ -153,6 +179,26 @@ onBeforeUnmount(() => {
             Dong
           </button>
         </div>
+
+        <div class="mb-3 flex flex-wrap items-center gap-4 text-sm text-[#6f655b]">
+          <label class="inline-flex items-center gap-2">
+            <input v-model="uploadMode" type="radio" value="temp" />
+            <span>Tam thoi (1 gio)</span>
+          </label>
+          <label class="inline-flex items-center gap-2">
+            <input v-model="uploadMode" type="radio" value="permanent" />
+            <span>Vinh vien (can token)</span>
+          </label>
+        </div>
+
+        <input
+          v-if="uploadMode === 'permanent'"
+          v-model="uploadToken"
+          class="mb-3 w-full rounded-xl border border-[#cfe3dd] bg-white px-3 py-2 text-sm text-[#1f1b16]"
+          type="password"
+          placeholder="Nhap upload token"
+        />
+
         <div
           class="flex flex-wrap items-center gap-3 rounded-2xl border border-dashed px-4 py-3"
           :class="isDragging ? 'border-teal-600 bg-teal-50' : 'border-teal-200 bg-white/80'"

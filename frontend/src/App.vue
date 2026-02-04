@@ -73,14 +73,13 @@ onBeforeUnmount(() => {
       <header v-if="!shareId" class="mb-6 sm:mb-8">
         <div>
           <p class="mb-2 text-[0.7rem] font-semibold uppercase tracking-[0.2em] text-teal-700">
-            Redis document vault
+            MinIO document vault
           </p>
           <h1 class="mb-3 font-['Space\\ Grotesk'] text-3xl sm:text-5xl">
-            Quan ly tai lieu tam thoi
+            Quan ly tai lieu tren S3
           </h1>
           <p class="max-w-xl text-[#6f655b]">
-            Upload moi loai file duoi 20MB, luu trong Redis 1 gio, tai xuong bat cu luc nao khi con
-            han.
+            Upload moi loai file duoi 20MB len MinIO S3. Ban co the luu tam thoi hoac dung token de luu vinh vien.
           </p>
         </div>
       </header>

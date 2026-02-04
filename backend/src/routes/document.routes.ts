@@ -4,8 +4,10 @@ import {
     downloadDocument,
     extendDocument,
     listDocuments,
-    uploadDocument
+    uploadDocument,
+    uploadPermanentDocument
 } from "../controllers/document.controller";
+import requireUploadAuth from "../middleware/upload-auth";
 
 const router = express.Router();
 
@@ -18,7 +20,14 @@ const upload = multer({
 
 router.get("/", listDocuments);
 router.post("/", upload.single("file"), uploadDocument);
+router.post(
+    "/permanent",
+    requireUploadAuth,
+    upload.single("file"),
+    uploadPermanentDocument
+);
 router.post("/:id/extend", express.json(), extendDocument);
+router.head("/:id", downloadDocument);
 router.get("/:id", downloadDocument);
 
 export default router;

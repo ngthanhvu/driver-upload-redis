@@ -7,7 +7,7 @@ A cloud storage/file drive application built with modern web technologies, allow
 - **File Upload & Storage**: Securely upload and store files in the cloud
 - **File Management**: Organize files with folders and metadata
 - **User Authentication**: Secure login and account management
-- **Real-time Updates**: Powered by Redis for caching and real-time features
+- **Object Storage**: Powered by MinIO (S3 API) for temporary and permanent files
 - **Responsive UI**: Mobile-friendly interface built with Vue.js
 
 ## 🛠️ Tech Stack
@@ -22,9 +22,9 @@ A cloud storage/file drive application built with modern web technologies, allow
 - **Express.js**: Web application framework for Node.js
 - **TypeScript**: Type-safe server-side development
 
-### Database & Cache
+### Database & Storage
 - **MongoDB**: NoSQL document database for storing application data
-- **Redis**: In-memory data structure store for caching and session management
+- **MinIO / S3**: Object storage for files with TTL cleanup support
 
 ### Infrastructure
 - **Docker**: Containerization platform for consistent deployments
@@ -96,9 +96,14 @@ Create a `.env` file in the `backend/` directory with the following variables:
 ```env
 PORT=5000
 MONGO_URI=mongodb://mongo:27017/driveapp
-REDIS_URL=redis://redis:6379
+MINIO_ENDPOINT=localhost
+MINIO_PORT=9000
+MINIO_USE_SSL=false
+MINIO_ACCESS_KEY=minioadmin
+MINIO_SECRET_KEY=minioadmin
+MINIO_BUCKET=drive-documents
+UPLOAD_AUTH_TOKEN=change-me
 CORS_ORIGIN=http://localhost:5173
-JWT_SECRET=your-jwt-secret-key
 ```
 
 ### Frontend
@@ -156,11 +161,11 @@ The application consists of four services:
 - **frontend**: Vue.js application served via Vite in development or Nginx in production
 - **backend**: Express.js API server
 - **mongo**: MongoDB database for persistent storage
-- **redis**: Redis cache for session management and temporary storage
+- **minio/s3**: Object storage for temporary files (TTL) and permanent authenticated uploads
 
 ## 🔒 Security
 
 - Passwords are hashed using bcrypt
-- JWT tokens for secure authentication
+- Upload token authentication for permanent storage route
 - Input validation and sanitization
 - CORS configured for secure cross-origin requests

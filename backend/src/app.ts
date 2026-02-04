@@ -1,15 +1,37 @@
-import express from "express";
-import dotenv from "dotenv";
 import cors from "cors";
+import dotenv from "dotenv";
+import express from "express";
+import { ensureBucket } from "./config/s3";
 import connectDB from "./config/database";
-import connectRedis from "./config/redis";
+import {
+    cleanupExpiredDocuments
+} from "./controllers/document.controller";
+import requestLogger from "./middleware/request-logger";
 import documentRoutes from "./routes/document.routes";
 import logRoutes from "./routes/log.routes";
-import requestLogger from "./middleware/request-logger";
 
 dotenv.config();
 connectDB();
-connectRedis();
+
+void ensureBucket()
+    .then(() => {
+        console.log("✅ MinIO bucket is ready");
+    })
+    .catch((error) => {
+        console.error("❌ MinIO initialization error:", error);
+        process.exit(1);
+    });
+
+const cleanupIntervalMs = 60 * 1000;
+setInterval(() => {
+    void cleanupExpiredDocuments().catch((error) => {
+        console.error("❌ Failed to cleanup expired documents:", error);
+    });
+}, cleanupIntervalMs);
+
+void cleanupExpiredDocuments().catch((error) => {
+    console.error("❌ Failed to cleanup expired documents:", error);
+});
 
 const app = express();
 app.use(
