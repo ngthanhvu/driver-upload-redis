@@ -97,16 +97,8 @@ pipeline {
                           git fetch --all
                           git checkout ${DEPLOY_BRANCH}
                           git pull origin ${DEPLOY_BRANCH}
-                          cat > docker-compose.override.yml <<EOF
-                        services:
-                        backend:
-                            image: ${BACKEND_IMAGE}:${IMAGE_TAG}
-                        frontend:
-                            image: ${FRONTEND_IMAGE}:${IMAGE_TAG}
-                        EOF
-                          docker compose -f docker-compose.prod.yml -f docker-compose.override.yml pull backend frontend
-                          docker compose -f docker-compose.prod.yml -f docker-compose.override.yml up -d --no-build --remove-orphans
-                          docker image prune -f
+                          chmod +x run-build.sh
+                          ./run-build.sh
                         '
                     """
                 }
