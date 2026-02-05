@@ -43,11 +43,6 @@ services:
     mem_limit: 128M
     mem_reservation: 64M
     cpus: "0.50"
-    healthcheck:
-      test: [ "CMD", "wget", "-qO-", "http://localhost:5000/health" ]
-      interval: 15s
-      timeout: 5s
-      retries: 5
 
   frontend:
     build:
@@ -59,8 +54,7 @@ services:
     ports:
       - "8081:80"
     depends_on:
-      backend:
-        condition: service_healthy
+      - backend
     mem_limit: 32M
     mem_reservation: 16M
     cpus: "0.10"
