@@ -8,7 +8,7 @@ pipeline {
 
     environment {
         DOCKER_HUB_CREDENTIALS_ID = 'docker'
-        SSH_CREDENTIALS_ID = credentials('ssh-deploy-key')
+        SSH_CREDENTIALS_ID = 'ssh-deploy-key'
 
         DOCKER_NAMESPACE = 'ngthanhvu'
         BACKEND_IMAGE_NAME = 'drive-backend'
@@ -16,7 +16,7 @@ pipeline {
 
         // Chi host de trong Credentials neu ban muon an thong tin server
         DEPLOY_HOST = credentials('deploy-host')
-        DEPLOY_USER = credentials('deploy-user')
+        DEPLOY_USER = 'root'
         DEPLOY_PATH = '/root/ngthanhvu/drive-app'
         DEPLOY_BRANCH = 'main'
     }
@@ -37,6 +37,18 @@ pipeline {
                     env.BACKEND_IMAGE = "${DOCKER_NAMESPACE}/${BACKEND_IMAGE_NAME}"
                     env.FRONTEND_IMAGE = "${DOCKER_NAMESPACE}/${FRONTEND_IMAGE_NAME}"
                 }
+            }
+        }
+
+        stage('Check Docker CLI') {
+            steps {
+                sh '''
+                    if ! command -v docker >/dev/null 2>&1; then
+                      echo "Docker CLI is not installed on this Jenkins agent."
+                      echo "Please run this job on a Docker-enabled node or install Docker CLI + socket access."
+                      exit 127
+                    fi
+                '''
             }
         }
 
@@ -112,10 +124,16 @@ EOF
         }
 
         always {
-            sh "docker rmi -f ${BACKEND_IMAGE}:${IMAGE_TAG} ${BACKEND_IMAGE}:latest || true"
-            sh "docker rmi -f ${FRONTEND_IMAGE}:${IMAGE_TAG} ${FRONTEND_IMAGE}:latest || true"
-            sh 'docker image prune -f || true'
-            sh 'docker logout || true'
+            sh '''
+                if command -v docker >/dev/null 2>&1; then
+                  docker rmi -f ${BACKEND_IMAGE}:${IMAGE_TAG} ${BACKEND_IMAGE}:latest || true
+                  docker rmi -f ${FRONTEND_IMAGE}:${IMAGE_TAG} ${FRONTEND_IMAGE}:latest || true
+                  docker image prune -f || true
+                  docker logout || true
+                else
+                  echo "Skip docker cleanup: docker command not found"
+                fi
+            '''
             cleanWs()
         }
     }
