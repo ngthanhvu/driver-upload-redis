@@ -7,24 +7,24 @@ pipeline {
     }
 
     environment {
-        // SSH key để deploy
+        // SSH key deploy
         SSH_CREDENTIALS_ID = 'ssh-deploy-key'
 
-        // Thông tin server
-        DEPLOY_HOST = credentials('deploy-host')
-        DEPLOY_USER = 'root'
-        DEPLOY_PATH = '/root/ngthanhvu/drive-app'
+        // Host để trong Credentials (Secret Text)
+        DEPLOY_HOST   = credentials('deploy-host')
+        DEPLOY_USER   = 'root'
+        DEPLOY_PATH   = '/root/ngthanhvu/drive-app'
         DEPLOY_BRANCH = 'main'
     }
 
     stages {
-        stage('Checkout Source') {
+        stage('Checkout') {
             steps {
                 checkout scm
             }
         }
 
-        stage('Deploy to Server') {
+        stage('Deploy Server') {
             steps {
                 withCredentials([
                     sshUserPrivateKey(
@@ -32,29 +32,19 @@ pipeline {
                         keyFileVariable: 'SSH_KEY'
                     )
                 ]) {
-                    sh '''
-                        echo "🚀 Deploying to server..."
+                    sh """
+                        echo '🚀 Deploying to server...'
 
-                        ssh -i "$SSH_KEY" \
-                            -o StrictHostKeyChecking=no \
-                            '"$DEPLOY_USER"'@'"$DEPLOY_HOST"' << 'EOF'
-
-                        set -e
-                        echo "📂 Go to project directory"
-                        cd '"$DEPLOY_PATH"'
-
-                        echo "📥 Pull latest code"
-                        git fetch --all
-                        git checkout '"$DEPLOY_BRANCH"'
-                        git pull origin '"$DEPLOY_BRANCH"'
-
-                        echo "🛠 Run build script"
-                        chmod +x run-build.sh
-                        ./run-build.sh
-
-                        echo "✅ Deploy done"
-                        EOF
-                    '''
+                        ssh -i "$SSH_KEY" -o StrictHostKeyChecking=no ${DEPLOY_USER}@${DEPLOY_HOST} '
+                            set -e
+                            cd ${DEPLOY_PATH}
+                            git fetch --all
+                            git checkout ${DEPLOY_BRANCH}
+                            git pull origin ${DEPLOY_BRANCH}
+                            chmod +x run-build.sh
+                            ./run-build.sh
+                        '
+                    """
                 }
             }
         }
