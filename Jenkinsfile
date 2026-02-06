@@ -80,57 +80,59 @@ pipeline {
     post {
 
         success {
-            withCredentials([
-                string(credentialsId: 'telegram-bot-token', variable: 'TG_TOKEN'),
-                string(credentialsId: 'telegram-chat-id', variable: 'TG_CHAT_ID')
-            ]) {
-                sh '''
-                    curl -s -X POST https://api.telegram.org/bot$TG_TOKEN/sendMessage \
-                        -d chat_id=$TG_CHAT_ID \
-                        -d parse_mode=Markdown \
-                      -d text="✅ *DEPLOY SUCCESS*
+    withCredentials([
+        string(credentialsId: 'telegram-bot-token', variable: 'TG_TOKEN'),
+        string(credentialsId: 'telegram-chat-id', variable: 'TG_CHAT_ID')
+    ]) {
+        sh '''
+            curl -s -X POST https://api.telegram.org/bot$TG_TOKEN/sendMessage \
+              -d chat_id=$TG_CHAT_ID \
+              -d parse_mode=Markdown \
+              -d text="✅ *DEPLOY SUCCESS*
 
-                        📦 *Project*: $JOB_NAME
-                        🔢 *Build*: #$BUILD_NUMBER
-                        🌿 *Branch*: $DEPLOY_BRANCH
-                        🖥 *Server*: $DEPLOY_HOST
+📦 *Project*: $JOB_NAME
+🔢 *Build*: #$BUILD_NUMBER
+🌿 *Branch*: $DEPLOY_BRANCH
+🖥 *Server*: $DEPLOY_HOST
 
-                        🔑 *Commit*: \`$GIT_COMMIT_SHORT\`
-                        👤 *Author*: $GIT_AUTHOR
-                        📝 *Message*: $GIT_MESSAGE
+🔑 *Commit*: $GIT_COMMIT_SHORT
+👤 *Author*: $GIT_AUTHOR
+📝 *Message*: $GIT_MESSAGE
 
-                        ⏱ *Time*: $BUILD_TIME
-                        "
-                '''
-            }
-        }
+⏱ *Time*: $BUILD_TIME
+"
+        '''
+    }
+}
+
 
         failure {
-            withCredentials([
-                string(credentialsId: 'telegram-bot-token', variable: 'TG_TOKEN'),
-                string(credentialsId: 'telegram-chat-id', variable: 'TG_CHAT_ID')
-            ]) {
-                sh '''
-                    curl -s -X POST https://api.telegram.org/bot$TG_TOKEN/sendMessage \
-                        -d chat_id=$TG_CHAT_ID \
-                        -d parse_mode=Markdown \
-                      -d text="❌ *DEPLOY FAILED*
+    withCredentials([
+        string(credentialsId: 'telegram-bot-token', variable: 'TG_TOKEN'),
+        string(credentialsId: 'telegram-chat-id', variable: 'TG_CHAT_ID')
+    ]) {
+        sh '''
+            curl -s -X POST https://api.telegram.org/bot$TG_TOKEN/sendMessage \
+              -d chat_id=$TG_CHAT_ID \
+              -d parse_mode=Markdown \
+              -d text="❌ *DEPLOY FAILED*
 
-                        📦 *Project*: $JOB_NAME
-                        🔢 *Build*: #$BUILD_NUMBER
-                        🌿 *Branch*: $DEPLOY_BRANCH
-                        🖥 *Server*: $DEPLOY_HOST
+📦 *Project*: $JOB_NAME
+🔢 *Build*: #$BUILD_NUMBER
+🌿 *Branch*: $DEPLOY_BRANCH
+🖥 *Server*: $DEPLOY_HOST
 
-                        🔑 *Commit*: \`$GIT_COMMIT_SHORT\`
-                        👤 *Author*: $GIT_AUTHOR
-                        📝 *Message*: $GIT_MESSAGE
+🔑 *Commit*: $GIT_COMMIT_SHORT
+👤 *Author*: $GIT_AUTHOR
+📝 *Message*: $GIT_MESSAGE
 
-                        🔗 *Jenkins Log*:
-                        $BUILD_URL
-                        "
-                '''
-            }
-        }
+🔗 *Jenkins Log*:
+$BUILD_URL
+"
+        '''
+    }
+}
+
 
         always {
             cleanWs()
