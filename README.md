@@ -142,7 +142,7 @@ For production deployment:
 1. Update environment variables in the production compose file
 2. Run `docker-compose -f docker-compose.prod.yml up -d --build`
 
-## 🤝 Contributing
+## 🤝 Contributing...
 
 1. Fork the repository
 2. Create a feature branch (`git checkout -b feature/amazing-feature`)
