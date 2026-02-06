@@ -7,10 +7,8 @@ pipeline {
     }
 
     environment {
-        // SSH key deploy
         SSH_CREDENTIALS_ID = 'ssh-deploy-key'
 
-        // Host để trong Credentials (Secret Text)
         DEPLOY_HOST   = credentials('deploy-host')
         DEPLOY_USER   = 'root'
         DEPLOY_PATH   = '/root/ngthanhvu/drive-app'
@@ -52,11 +50,31 @@ pipeline {
 
     post {
         success {
-            echo '🎉 Deploy SUCCESS'
+            withCredentials([
+                string(credentialsId: 'telegram-bot-token', variable: 'TG_TOKEN'),
+                string(credentialsId: 'telegram-chat-id', variable: 'TG_CHAT_ID')
+            ]) {
+                sh '''
+                    curl -s -X POST https://api.telegram.org/bot$TG_TOKEN/sendMessage \
+                        -d chat_id=$TG_CHAT_ID \
+                        -d parse_mode=Markdown \
+                    -d text="✅ *DEPLOY SUCCESS*\n\n• Job: $JOB_NAME\n• Build: #$BUILD_NUMBER\n• Branch: main\n• Server: $DEPLOY_HOST"
+                '''
+            }
         }
 
         failure {
-            echo "❌ Deploy FAILED: ${env.BUILD_URL}"
+            withCredentials([
+                string(credentialsId: 'telegram-bot-token', variable: 'TG_TOKEN'),
+                string(credentialsId: 'telegram-chat-id', variable: 'TG_CHAT_ID')
+            ]) {
+                sh '''
+                    curl -s -X POST https://api.telegram.org/bot$TG_TOKEN/sendMessage \
+                        -d chat_id=$TG_CHAT_ID \
+                        -d parse_mode=Markdown \
+                    -d text="❌ *DEPLOY FAILED*\n\n• Job: $JOB_NAME\n• Build: #$BUILD_NUMBER\n• Branch: main\n• URL: $BUILD_URL"
+                '''
+            }
         }
 
         always {
