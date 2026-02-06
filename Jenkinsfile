@@ -7,8 +7,10 @@ pipeline {
     }
 
     environment {
+        // SSH deploy
         SSH_CREDENTIALS_ID = 'ssh-deploy-key'
 
+        // Server info (deploy-host là Secret Text)
         DEPLOY_HOST   = credentials('deploy-host')
         DEPLOY_USER   = 'root'
         DEPLOY_PATH   = '/root/ngthanhvu/drive-app'
@@ -16,9 +18,36 @@ pipeline {
     }
 
     stages {
+
         stage('Checkout') {
             steps {
                 checkout scm
+            }
+        }
+
+        stage('Collect Build Info') {
+            steps {
+                script {
+                    env.GIT_COMMIT_SHORT = sh(
+                        script: 'git rev-parse --short HEAD',
+                        returnStdout: true
+                    ).trim()
+
+                    env.GIT_AUTHOR = sh(
+                        script: "git log -1 --pretty=format:'%an'",
+                        returnStdout: true
+                    ).trim()
+
+                    env.GIT_MESSAGE = sh(
+                        script: "git log -1 --pretty=format:'%s'",
+                        returnStdout: true
+                    ).trim()
+
+                    env.BUILD_TIME = sh(
+                        script: "date '+%Y-%m-%d %H:%M:%S'",
+                        returnStdout: true
+                    ).trim()
+                }
             }
         }
 
@@ -49,6 +78,7 @@ pipeline {
     }
 
     post {
+
         success {
             withCredentials([
                 string(credentialsId: 'telegram-bot-token', variable: 'TG_TOKEN'),
@@ -58,7 +88,19 @@ pipeline {
                     curl -s -X POST https://api.telegram.org/bot$TG_TOKEN/sendMessage \
                         -d chat_id=$TG_CHAT_ID \
                         -d parse_mode=Markdown \
-                    -d text="✅ *DEPLOY SUCCESS*\n\n• Job: $JOB_NAME\n• Build: #$BUILD_NUMBER\n• Branch: main\n• Server: $DEPLOY_HOST"
+                      -d text="✅ *DEPLOY SUCCESS*
+
+                        📦 *Project*: $JOB_NAME
+                        🔢 *Build*: #$BUILD_NUMBER
+                        🌿 *Branch*: $DEPLOY_BRANCH
+                        🖥 *Server*: $DEPLOY_HOST
+
+                        🔑 *Commit*: \`$GIT_COMMIT_SHORT\`
+                        👤 *Author*: $GIT_AUTHOR
+                        📝 *Message*: $GIT_MESSAGE
+
+                        ⏱ *Time*: $BUILD_TIME
+                        "
                 '''
             }
         }
@@ -72,7 +114,20 @@ pipeline {
                     curl -s -X POST https://api.telegram.org/bot$TG_TOKEN/sendMessage \
                         -d chat_id=$TG_CHAT_ID \
                         -d parse_mode=Markdown \
-                    -d text="❌ *DEPLOY FAILED*\n\n• Job: $JOB_NAME\n• Build: #$BUILD_NUMBER\n• Branch: main\n• URL: $BUILD_URL"
+                      -d text="❌ *DEPLOY FAILED*
+
+                        📦 *Project*: $JOB_NAME
+                        🔢 *Build*: #$BUILD_NUMBER
+                        🌿 *Branch*: $DEPLOY_BRANCH
+                        🖥 *Server*: $DEPLOY_HOST
+
+                        🔑 *Commit*: \`$GIT_COMMIT_SHORT\`
+                        👤 *Author*: $GIT_AUTHOR
+                        📝 *Message*: $GIT_MESSAGE
+
+                        🔗 *Jenkins Log*:
+                        $BUILD_URL
+                        "
                 '''
             }
         }
