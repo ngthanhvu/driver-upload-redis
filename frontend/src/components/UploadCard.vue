@@ -5,6 +5,15 @@ import { Upload } from 'lucide-vue-next'
 const props = defineProps<{ apiBase: string }>()
 const emit = defineEmits<{ (e: 'uploaded'): void }>()
 
+type UploadStatus = 'pending' | 'uploading' | 'success' | 'error'
+type UploadQueueItem = {
+  id: string
+  file: File
+  progress: number
+  status: UploadStatus
+  error?: string
+}
+
 const selectedFiles = ref<File[]>([])
 const previewUrls = ref<string[]>([])
 const fileInput = ref<HTMLInputElement | null>(null)
@@ -16,9 +25,10 @@ const dragCounter = ref(0)
 const isDialogOpen = ref(false)
 const uploadMode = ref<'temp' | 'permanent'>('temp')
 const uploadToken = ref('')
+const queue = ref<UploadQueueItem[]>([])
 
 const joinUrl = (base: string, path: string) => base.replace(/\/$/, '') + path
-const MAX_FILE_SIZE = 20 * 1024 * 1024
+const MAX_FILE_SIZE = 250 * 1024 * 1024
 
 const fileLabel = computed(() => {
   if (selectedFiles.value.length === 0) return 'Chon file'
@@ -29,6 +39,12 @@ const fileLabel = computed(() => {
   return `Da chon ${selectedFiles.value.length} files`
 })
 
+const totalProgress = computed(() => {
+  if (queue.value.length === 0) return 0
+  const sum = queue.value.reduce((total, item) => total + item.progress, 0)
+  return Math.round(sum / queue.value.length)
+})
+
 const clearPreviews = () => {
   previewUrls.value.forEach((url) => {
     if (url) URL.revokeObjectURL(url)
@@ -36,7 +52,27 @@ const clearPreviews = () => {
   previewUrls.value = []
 }
 
+const resetSelection = () => {
+  clearPreviews()
+  selectedFiles.value = []
+  previewUrls.value = []
+  if (fileInput.value) {
+    fileInput.value.value = ''
+  }
+}
+
+const formatBytes = (size: number) => {
+  if (size < 1024) return `${size} B`
+  const kb = size / 1024
+  if (kb < 1024) return `${kb.toFixed(1)} KB`
+  const mb = kb / 1024
+  if (mb < 1024) return `${mb.toFixed(1)} MB`
+  const gb = mb / 1024
+  return `${gb.toFixed(2)} GB`
+}
+
 const setFiles = (files: File[]) => {
+  if (uploading.value) return
   clearPreviews()
   selectedFiles.value = files
   previewUrls.value = files.map((file) =>
@@ -44,6 +80,7 @@ const setFiles = (files: File[]) => {
   )
   success.value = ''
   error.value = ''
+  queue.value = []
 }
 
 const onFileChange = (event: Event) => {
@@ -78,6 +115,72 @@ const onDrop = (event: DragEvent) => {
   setFiles(files)
 }
 
+const createQueueItems = (files: File[]) =>
+  files.map((file, index) => ({
+    id: `${Date.now()}-${index}-${file.name}`,
+    file,
+    progress: 0,
+    status: 'pending' as UploadStatus
+  }))
+
+const statusLabel = (status: UploadStatus) => {
+  if (status === 'pending') return 'Cho'
+  if (status === 'uploading') return 'Dang upload'
+  if (status === 'success') return 'Thanh cong'
+  return 'Loi'
+}
+
+const statusTextClass = (status: UploadStatus) => {
+  if (status === 'error') return 'text-red-600'
+  if (status === 'success') return 'text-emerald-600'
+  if (status === 'uploading') return 'text-teal-700'
+  return 'text-[#6f655b]'
+}
+
+const progressClass = (status: UploadStatus) => {
+  if (status === 'error') return 'bg-red-500'
+  if (status === 'success') return 'bg-emerald-500'
+  return 'bg-teal-600'
+}
+
+const uploadFileWithProgress = (item: UploadQueueItem, path: string, token?: string) =>
+  new Promise<void>((resolve, reject) => {
+    const xhr = new XMLHttpRequest()
+    xhr.open('POST', joinUrl(props.apiBase, path))
+    if (token) {
+      xhr.setRequestHeader('Authorization', `Bearer ${token}`)
+    }
+
+    xhr.upload.onprogress = (event) => {
+      if (!event.lengthComputable) return
+      item.progress = Math.round((event.loaded / event.total) * 100)
+    }
+
+    xhr.onload = () => {
+      if (xhr.status >= 200 && xhr.status < 300) {
+        item.progress = 100
+        resolve()
+        return
+      }
+      let message = 'Upload that bai'
+      try {
+        const data = JSON.parse(xhr.responseText || '{}') as { message?: string }
+        if (data?.message) message = data.message
+      } catch {
+        // ignore parse errors
+      }
+      reject(new Error(message))
+    }
+
+    xhr.onerror = () => {
+      reject(new Error('Khong the ket noi may chu'))
+    }
+
+    const formData = new FormData()
+    formData.append('file', item.file)
+    xhr.send(formData)
+  })
+
 const upload = async () => {
   if (selectedFiles.value.length === 0) {
     error.value = 'Vui long chon file'
@@ -91,7 +194,7 @@ const upload = async () => {
 
   const oversizeFiles = selectedFiles.value.filter((file) => file.size > MAX_FILE_SIZE)
   if (oversizeFiles.length > 0) {
-    error.value = 'File vuot qua 20MB, vui long chon file nho hon'
+    error.value = 'File vuot qua 250MB, vui long chon file nho hon'
     return
   }
 
@@ -100,43 +203,58 @@ const upload = async () => {
   error.value = ''
   try {
     let successCount = 0
+    let errorCount = 0
+    let firstErrorMessage = ''
     const path = uploadMode.value === 'permanent' ? '/api/documents/permanent' : '/api/documents'
 
-    for (const file of selectedFiles.value) {
-      const formData = new FormData()
-      formData.append('file', file)
-      const response = await fetch(joinUrl(props.apiBase, path), {
-        method: 'POST',
-        headers:
-          uploadMode.value === 'permanent'
-            ? {
-                Authorization: `Bearer ${uploadToken.value.trim()}`
-              }
-            : undefined,
-        body: formData
-      })
-      if (!response.ok) {
-        const data = await response.json().catch(() => ({}))
-        throw new Error(data.message || 'Upload that bai')
+    const items = createQueueItems(selectedFiles.value)
+    queue.value = items
+
+    for (const item of items) {
+      item.status = 'uploading'
+      item.progress = 0
+      try {
+        await uploadFileWithProgress(
+          item,
+          path,
+          uploadMode.value === 'permanent' ? uploadToken.value.trim() : undefined
+        )
+        item.status = 'success'
+        item.progress = 100
+        successCount += 1
+        queue.value = queue.value.filter((entry) => entry.id !== item.id)
+      } catch (err) {
+        const message = err instanceof Error ? err.message : 'Da co loi xay ra'
+        item.status = 'error'
+        item.error = message
+        errorCount += 1
+        if (!firstErrorMessage) firstErrorMessage = message
       }
-      successCount += 1
     }
 
-    if (uploadMode.value === 'permanent') {
-      success.value =
-        successCount === 1
-          ? 'Upload vinh vien thanh cong'
-          : `Upload vinh vien thanh cong ${successCount} files`
+    if (errorCount > 0) {
+      error.value =
+        errorCount === 1
+          ? firstErrorMessage || 'Co 1 file upload loi'
+          : `Co ${errorCount} file upload loi`
     } else {
-      success.value =
-        successCount === 1 ? 'Upload tam thoi thanh cong' : `Upload tam thoi thanh cong ${successCount} files`
+      if (uploadMode.value === 'permanent') {
+        success.value =
+          successCount === 1
+            ? 'Upload vinh vien thanh cong'
+            : `Upload vinh vien thanh cong ${successCount} files`
+      } else {
+        success.value =
+          successCount === 1
+            ? 'Upload tam thoi thanh cong'
+            : `Upload tam thoi thanh cong ${successCount} files`
+      }
     }
 
-    setFiles([])
-    if (fileInput.value) {
-      fileInput.value.value = ''
+    if (successCount > 0) {
+      emit('uploaded')
     }
-    emit('uploaded')
+    resetSelection()
   } catch (err) {
     error.value = err instanceof Error ? err.message : 'Da co loi xay ra'
   } finally {
@@ -208,7 +326,7 @@ onBeforeUnmount(() => {
           @drop="onDrop"
         >
           <label class="inline-flex cursor-pointer items-center gap-2 rounded-full border border-dashed border-teal-400 px-4 py-2 text-sm font-semibold text-teal-700">
-            <input ref="fileInput" class="hidden" type="file" multiple @change="onFileChange" />
+            <input ref="fileInput" class="hidden" type="file" multiple :disabled="uploading" @change="onFileChange" />
             <span>{{ fileLabel }}</span>
           </label>
           <span class="text-sm text-[#6f655b]">Keo tha file vao day hoac bam de chon.</span>
@@ -232,6 +350,40 @@ onBeforeUnmount(() => {
             <div class="mt-2 text-xs text-[#6f655b] break-all">{{ selectedFiles[index]?.name }}</div>
           </div>
         </div>
+        <div v-if="queue.length > 0" class="mt-4">
+          <div class="flex flex-wrap items-center justify-between gap-2 text-xs text-[#6f655b]">
+            <span>Hang cho: {{ queue.length }} file</span>
+            <span v-if="uploading">Tong tien do: {{ totalProgress }}%</span>
+          </div>
+          <div class="mt-2 h-2 w-full rounded-full bg-teal-100">
+            <div class="h-2 rounded-full bg-teal-600 transition-all" :style="{ width: `${totalProgress}%` }"></div>
+          </div>
+          <div class="mt-3 space-y-2">
+            <div
+              v-for="item in queue"
+              :key="item.id"
+              class="rounded-xl border border-teal-100 bg-white px-3 py-2"
+            >
+              <div class="flex items-center justify-between gap-2 text-sm">
+                <div class="flex-1 truncate font-medium text-[#1f1b16]">{{ item.file.name }}</div>
+                <div class="text-xs text-[#6f655b]">{{ formatBytes(item.file.size) }}</div>
+              </div>
+              <div class="mt-2 flex items-center gap-2">
+                <div class="h-2 flex-1 rounded-full bg-teal-50">
+                  <div
+                    class="h-2 rounded-full transition-all"
+                    :class="progressClass(item.status)"
+                    :style="{ width: `${item.progress}%` }"
+                  ></div>
+                </div>
+                <div class="text-xs" :class="statusTextClass(item.status)">
+                  {{ statusLabel(item.status) }} {{ item.progress }}%
+                </div>
+              </div>
+              <div v-if="item.error" class="mt-1 text-xs text-red-600">{{ item.error }}</div>
+            </div>
+          </div>
+        </div>
         <button
           class="mt-4 w-full rounded-full bg-gradient-to-r from-teal-700 to-orange-400 px-4 py-2 text-sm font-semibold text-white shadow-lg disabled:opacity-60"
           type="button"
@@ -243,7 +395,7 @@ onBeforeUnmount(() => {
         <div class="mt-3 text-sm">
           <span v-if="error" class="font-semibold text-red-600">{{ error }}</span>
           <span v-else-if="success" class="font-semibold text-emerald-600">{{ success }}</span>
-          <span v-else class="text-[#6f655b]">Dung luong toi da 20MB.</span>
+          <span v-else class="text-[#6f655b]">Dung luong toi da 250MB.</span>
         </div>
       </div>
     </div>

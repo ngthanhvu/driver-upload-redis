@@ -79,7 +79,7 @@ onBeforeUnmount(() => {
             Quan ly tai lieu tren S3
           </h1>
           <p class="max-w-xl text-[#6f655b]">
-            Upload moi loai file duoi 20MB len MinIO S3. Ban co the luu tam thoi hoac dung token de luu vinh vien.
+            Upload moi loai file duoi 250MB len MinIO S3. Ban co the luu tam thoi hoac dung token de luu vinh vien.
           </p>
         </div>
       </header>
