@@ -115,12 +115,13 @@ const onDrop = (event: DragEvent) => {
   setFiles(files)
 }
 
-const createQueueItems = (files: File[]) =>
+const createQueueItems = (files: File[]): UploadQueueItem[] =>
   files.map((file, index) => ({
     id: `${Date.now()}-${index}-${file.name}`,
     file,
     progress: 0,
-    status: 'pending' as UploadStatus
+    status: 'pending' as UploadStatus,
+    error: ''
   }))
 
 const statusLabel = (status: UploadStatus) => {
